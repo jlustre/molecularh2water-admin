@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Attach the sidebar designs composer to the settings page
+        \View::composer('admin.placeholders.settings', \App\View\Composers\SettingsSidebarDesignsComposer::class);
     }
 }

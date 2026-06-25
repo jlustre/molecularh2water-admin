@@ -1,0 +1,1 @@
+<svg class="h-8 w-8 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10a4 4 0 118 0c0 1.657-1.343 3-3 3s-3 1.343-3 3m0 0h.01"/><circle cx="12" cy="12" r="10"/></svg>
