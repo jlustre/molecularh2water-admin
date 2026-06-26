@@ -3,6 +3,7 @@
 use App\Models\MediaItem;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
 it('shows published admin media to authenticated users as read-only resources', function () {
@@ -106,4 +107,44 @@ it('allows guests to view an uploaded thumbnail through the public thumbnail end
     $this->get("http://localhost:8000/media/{$mediaItem->id}/thumbnail")
         ->assertOk()
         ->assertHeader('content-type', 'image/jpeg');
+});
+
+it('opens files from the public storage path when the storage disk cannot find them', function () {
+    $path = 'media/documents/public-storage-guide.pdf';
+    $absolutePath = public_path('storage/'.$path);
+
+    File::ensureDirectoryExists(dirname($absolutePath));
+    File::put($absolutePath, '%PDF-1.4 test');
+
+    $mediaItem = MediaItem::create([
+        'title' => 'Public Storage Guide',
+        'category' => 'documents',
+        'status' => 'published',
+        'file_path' => $path,
+        'file_name' => 'public-storage-guide.pdf',
+        'mime_type' => 'application/pdf',
+    ]);
+
+    try {
+        $this->get("http://localhost:8000/media/{$mediaItem->id}/open")
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    } finally {
+        File::delete($absolutePath);
+    }
+});
+
+it('falls back to the external url when a stored file is missing', function () {
+    $mediaItem = MediaItem::create([
+        'title' => 'Fallback Research Link',
+        'category' => 'documents',
+        'status' => 'published',
+        'url' => 'https://example.com/fallback-research.pdf',
+        'file_path' => 'media/documents/missing-file.pdf',
+        'file_name' => 'missing-file.pdf',
+        'mime_type' => 'application/pdf',
+    ]);
+
+    $this->get("http://localhost:8000/media/{$mediaItem->id}/open")
+        ->assertRedirect('https://example.com/fallback-research.pdf');
 });

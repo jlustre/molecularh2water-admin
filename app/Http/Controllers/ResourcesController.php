@@ -63,12 +63,18 @@ class ResourcesController extends Controller
     public function open(MediaItem $mediaItem): RedirectResponse|BinaryFileResponse
     {
         if ($mediaItem->file_path) {
-            abort_unless(Storage::disk('public')->exists($mediaItem->file_path), 404);
+            $path = $this->publicDiskPath($mediaItem->file_path);
 
-            return response()->file(Storage::disk('public')->path($mediaItem->file_path), [
-                'Content-Type' => $mediaItem->mime_type ?: 'application/octet-stream',
-                'Content-Disposition' => 'inline; filename="'.($mediaItem->file_name ?: basename($mediaItem->file_path)).'"',
-            ]);
+            if ($path) {
+                return response()->file($path, [
+                    'Content-Type' => $mediaItem->mime_type ?: 'application/octet-stream',
+                    'Content-Disposition' => 'inline; filename="'.($mediaItem->file_name ?: basename($mediaItem->file_path)).'"',
+                ]);
+            }
+
+            if ($mediaItem->url) {
+                return redirect()->away($mediaItem->url);
+            }
         }
 
         abort_unless($mediaItem->url, 404);
@@ -79,11 +85,37 @@ class ResourcesController extends Controller
     public function thumbnail(MediaItem $mediaItem): BinaryFileResponse
     {
         abort_unless($mediaItem->thumbnail_path, 404);
-        abort_unless(Storage::disk('public')->exists($mediaItem->thumbnail_path), 404);
+        $path = $this->publicDiskPath($mediaItem->thumbnail_path);
 
-        return response()->file(Storage::disk('public')->path($mediaItem->thumbnail_path), [
+        abort_unless($path, 404);
+
+        return response()->file($path, [
             'Content-Type' => $mediaItem->thumbnail_mime_type ?: 'application/octet-stream',
             'Content-Disposition' => 'inline; filename="'.($mediaItem->thumbnail_name ?: basename($mediaItem->thumbnail_path)).'"',
         ]);
+    }
+
+    private function publicDiskPath(string $path): ?string
+    {
+        if (Storage::disk('public')->exists($path)) {
+            return Storage::disk('public')->path($path);
+        }
+
+        $normalizedPath = ltrim($path, '/');
+        $publicStoragePath = public_path('storage/'.$normalizedPath);
+
+        if (file_exists($publicStoragePath)) {
+            return $publicStoragePath;
+        }
+
+        if (str_starts_with($normalizedPath, 'storage/')) {
+            $publicPath = public_path($normalizedPath);
+
+            if (file_exists($publicPath)) {
+                return $publicPath;
+            }
+        }
+
+        return null;
     }
 }
