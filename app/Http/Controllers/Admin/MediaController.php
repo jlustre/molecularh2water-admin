@@ -149,6 +149,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class MediaItemsSeeder extends Seeder
 {
@@ -159,11 +160,35 @@ class MediaItemsSeeder extends Seeder
     {
         \$mediaItems = {$exportedItems};
 
+        \$this->seedMediaFiles(\$mediaItems);
+
         foreach (\$mediaItems as \$mediaItem) {
             DB::table('media_items')->updateOrInsert(
                 ['id' => \$mediaItem['id']],
                 \$mediaItem
             );
+        }
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> \$mediaItems
+     */
+    private function seedMediaFiles(array \$mediaItems): void
+    {
+        foreach (\$mediaItems as \$mediaItem) {
+            \$filePath = \$mediaItem['file_path'] ?? null;
+
+            if (! \$filePath || Storage::disk('public')->exists(\$filePath)) {
+                continue;
+            }
+
+            \$seedFilePath = database_path('seeders/'.ltrim(\$filePath, '/'));
+
+            if (! file_exists(\$seedFilePath)) {
+                continue;
+            }
+
+            Storage::disk('public')->put(\$filePath, file_get_contents(\$seedFilePath));
         }
     }
 }

@@ -134,6 +134,32 @@ it('opens files from the public storage path when the storage disk cannot find t
     }
 });
 
+it('opens files from the deployable seed media path when public storage is missing them', function () {
+    Storage::fake('public');
+
+    $path = 'media/documents/seed-media-guide.pdf';
+    $absolutePath = database_path('seeders/'.$path);
+
+    File::ensureDirectoryExists(dirname($absolutePath));
+    File::put($absolutePath, '%PDF-1.4 test');
+
+    $mediaItem = MediaItem::create([
+        'title' => 'Seed Media Guide',
+        'category' => 'documents',
+        'status' => 'published',
+        'file_path' => $path,
+        'file_name' => 'seed-media-guide.pdf',
+        'mime_type' => 'application/pdf',
+    ]);
+
+    try {
+        $this->get("http://localhost:8000/media/{$mediaItem->id}/open")
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    } finally {
+        File::delete($absolutePath);
+    }
+});
 it('falls back to the external url when a stored file is missing', function () {
     $mediaItem = MediaItem::create([
         'title' => 'Fallback Research Link',

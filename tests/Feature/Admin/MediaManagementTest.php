@@ -194,7 +194,10 @@ it('exports current media records into a media items seeder', function () {
             expect($path)->toBe(database_path('seeders/MediaItemsSeeder.php'));
 
             return str_contains($contents, 'class MediaItemsSeeder')
+                && str_contains($contents, 'use Illuminate\Support\Facades\Storage;')
+                && str_contains($contents, '$this->seedMediaFiles($mediaItems);')
                 && str_contains($contents, "DB::table('media_items')->updateOrInsert")
+                && str_contains($contents, 'private function seedMediaFiles(array $mediaItems): void')
                 && str_contains($contents, "'id' => {$mediaItem->id}")
                 && str_contains($contents, "'title' => 'Seeded Hydrogen Guide'")
                 && str_contains($contents, "'file_path' => 'media/documents/seeded-guide.pdf'")

@@ -120,6 +120,12 @@ class ResourcesController extends Controller
         }
 
         $normalizedPath = ltrim($path, '/');
+        $seededMediaPath = database_path('seeders/'.$normalizedPath);
+
+        if (file_exists($seededMediaPath)) {
+            return $seededMediaPath;
+        }
+
         $publicStoragePath = public_path('storage/'.$normalizedPath);
 
         if (file_exists($publicStoragePath)) {
@@ -145,6 +151,7 @@ class ResourcesController extends Controller
         $normalizedPath = ltrim($path, '/');
         $paths = [
             Storage::disk('public')->path($path),
+            database_path('seeders/'.$normalizedPath),
             public_path('storage/'.$normalizedPath),
         ];
 
