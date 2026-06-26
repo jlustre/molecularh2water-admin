@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
@@ -30,6 +31,20 @@ new #[Layout('layouts.guest')] class extends Component
 
         event(new Registered($user = User::create($validated)));
 
+        $memberRole = Role::query()->firstOrCreate(
+            ['slug' => 'member'],
+            [
+                'name' => 'Member',
+                'description' => 'Default registered user role for read-only member portal access.',
+                'status' => 'active',
+                'color' => 'slate',
+                'permissions' => [],
+                'is_system' => true,
+            ],
+        );
+
+        $user->roles()->syncWithoutDetaching([$memberRole->id]);
+
         Auth::login($user);
 
         $this->redirect(route('dashboard', absolute: false), navigate: true);
@@ -38,9 +53,9 @@ new #[Layout('layouts.guest')] class extends Component
 
 <div>
     <div class="mb-6">
-        <p class="text-xs font-bold uppercase tracking-[0.22em] text-teal-700">New Admin</p>
+        <p class="text-xs font-bold uppercase tracking-[0.22em] text-teal-700">New Member</p>
         <h1 class="mt-2 text-2xl font-black tracking-normal text-slate-950">Create your account</h1>
-        <p class="mt-2 text-sm leading-6 text-slate-500">Set up access for the Molecular H2 Water admin portal.</p>
+        <p class="mt-2 text-sm leading-6 text-slate-500">Set up member access for the Molecular H2 Water portal.</p>
     </div>
 
     <form wire:submit="register">

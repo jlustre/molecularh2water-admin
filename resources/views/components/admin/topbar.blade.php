@@ -10,8 +10,8 @@
   <div class="relative flex items-center h-20 px-4 sm:px-8 lg:px-12">
     <!-- Left Section -->
     <div class="flex items-center gap-4 min-w-0">
-      <!-- Mobile Sidebar Toggle -->
-      <button aria-label="Open sidebar" class="lg:hidden flex items-center justify-center w-10 h-10 rounded-full bg-white/60 hover:bg-teal-100/60 focus:outline-none focus:ring-2 focus:ring-teal-400 shadow transition">
+      <!-- Sidebar Toggle -->
+      <button type="button" @click="sidebarOpen = ! sidebarOpen" :aria-label="sidebarOpen ? 'Hide sidebar' : 'Show sidebar'" class="flex items-center justify-center w-10 h-10 rounded-full bg-white/60 hover:bg-teal-100/60 focus:outline-none focus:ring-2 focus:ring-teal-400 shadow transition">
         <svg width="24" height="24" fill="none" stroke="currentColor" class="text-teal-700" stroke-width="2" viewBox="0 0 24 24">
           <rect x="4" y="6" width="16" height="2" rx="1" fill="currentColor"/>
           <rect x="4" y="11" width="16" height="2" rx="1" fill="currentColor"/>

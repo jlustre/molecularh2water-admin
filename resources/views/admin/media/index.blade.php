@@ -83,7 +83,7 @@
             @endforeach
         </section>
 
-        <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <section>
             <div class="rounded-lg border border-teal-100 bg-white p-6 shadow-sm">
                 <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                     <div>
@@ -208,43 +208,6 @@
                     {{ $mediaItems->links() }}
                 </div>
             </div>
-
-            <aside class="space-y-6">
-                <div class="rounded-lg border border-teal-100 bg-white p-6 shadow-sm">
-                    <p class="text-xs font-bold uppercase tracking-[0.2em] text-teal-700">CRUD Actions</p>
-                    <h2 class="mt-2 text-2xl font-black tracking-normal text-slate-950">Admin workflow</h2>
-                    <div class="mt-5 grid gap-3">
-                        <a href="{{ route('admin.media.create') }}" class="flex items-center justify-between rounded-md border border-teal-100 bg-teal-50 px-4 py-3 text-sm font-bold text-teal-900 transition hover:bg-teal-100">
-                            Create media
-                            <span>+</span>
-                        </a>
-                        <form method="POST" action="{{ route('admin.media.update-seeder') }}">
-                            @csrf
-                            <button type="submit" class="flex w-full items-center justify-between rounded-md border border-teal-100 bg-white px-4 py-3 text-left text-sm font-bold text-teal-900 transition hover:bg-teal-50">
-                                Update media seeder
-                                <span>DB</span>
-                            </button>
-                        </form>
-                        <p class="rounded-md border border-slate-100 bg-white px-4 py-3 text-sm leading-6 text-slate-600">
-                            Use the table actions to update or delete existing records. Exporting the seeder saves current media records, file paths, uploaded thumbnail paths, and external links.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="rounded-lg border border-teal-100 bg-[#041f1e] p-6 text-white shadow-sm">
-                    <p class="text-xs font-bold uppercase tracking-[0.2em] text-teal-200/65">Storage</p>
-                    <div class="mt-5 flex items-end justify-between">
-                        <div>
-                            <p class="text-3xl font-black">{{ $storageMb }} MB</p>
-                            <p class="mt-1 text-sm text-teal-100/60">Tracked media size</p>
-                        </div>
-                        <span class="rounded-full bg-teal-300/15 px-3 py-1 text-xs font-bold text-teal-200">Healthy</span>
-                    </div>
-                    <div class="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
-                        <div class="h-full rounded-full bg-teal-300" style="width: {{ $storagePercent }}%"></div>
-                    </div>
-                </div>
-            </aside>
         </section>
     </div>
 @endsection

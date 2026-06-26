@@ -2,6 +2,7 @@
 
 use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\RolesSeeder;
 
 it('allows an admin to manage roles and assigned users', function () {
     $admin = User::factory()->create();
@@ -101,4 +102,21 @@ it('prevents deleting system roles', function () {
     $this->assertDatabaseHas('roles', [
         'id' => $role->id,
     ]);
+});
+
+it('seeds the default access roles', function () {
+    $this->seed(RolesSeeder::class);
+
+    foreach (['super-admin', 'admin', 'manager', 'editor', 'member'] as $slug) {
+        $this->assertDatabaseHas('roles', [
+            'slug' => $slug,
+            'status' => 'active',
+            'is_system' => true,
+        ]);
+    }
+
+    expect(Role::where('slug', 'super-admin')->first()->permissions)
+        ->toContain('users.delete', 'settings.manage');
+
+    expect(Role::where('slug', 'member')->first()->permissions)->toBe([]);
 });

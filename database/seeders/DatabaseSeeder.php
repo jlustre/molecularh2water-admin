@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -17,16 +18,23 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Joey Lustre',
-            'email' => 'jclustre@gmail.com',
-            'password' => bcrypt('Password123'),
-        ]);
-
-         $this->call([
+        $this->call([
+            RolesSeeder::class,
             MediaItemsSeeder::class,
             // RolePermissionSeeder::class,
             // SuperAdminSeeder::class,
         ]);
+
+        $user = User::query()->updateOrCreate(
+            ['email' => 'jclustre@gmail.com'],
+            [
+                'name' => 'Joey Lustre',
+                'password' => bcrypt('Password123'),
+            ],
+        );
+
+        if ($superAdminRole = Role::query()->where('slug', 'super-admin')->first()) {
+            $user->roles()->syncWithoutDetaching([$superAdminRole->id]);
+        }
     }
 }
