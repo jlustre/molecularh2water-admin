@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\MediaItem;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ResourcesController extends Controller
@@ -55,5 +57,25 @@ class ResourcesController extends Controller
             'categories' => self::CATEGORIES,
             'resource' => $mediaItem,
         ]);
+    }
+
+    public function open(MediaItem $mediaItem): RedirectResponse
+    {
+        $resourceUrl = $mediaItem->file_path
+            ? $this->absoluteUrl(Storage::disk('public')->url($mediaItem->file_path))
+            : $mediaItem->url;
+
+        abort_unless($resourceUrl, 404);
+
+        return redirect()->away($resourceUrl);
+    }
+
+    private function absoluteUrl(string $path): string
+    {
+        if (filter_var($path, FILTER_VALIDATE_URL)) {
+            return $path;
+        }
+
+        return rtrim(request()->getSchemeAndHttpHost(), '/').'/'.ltrim($path, '/');
     }
 }

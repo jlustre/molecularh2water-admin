@@ -2,6 +2,8 @@
 
 @php
     $isVideoLinkForm = $isVideoLinkForm ?? false;
+    $isMediaLinkForm = $isMediaLinkForm ?? false;
+    $isLinkOnlyForm = $isVideoLinkForm || $isMediaLinkForm;
 @endphp
 
 <div class="grid gap-5 lg:grid-cols-2">
@@ -21,12 +23,12 @@
         @enderror
     </div>
 
-    @if ($isVideoLinkForm)
+    @if ($isLinkOnlyForm)
         <div>
-            <input type="hidden" name="category" value="videos">
+            <input type="hidden" name="category" value="{{ $isVideoLinkForm ? 'videos' : 'links' }}">
             <span class="block text-sm font-semibold text-slate-700">Category</span>
             <div class="mt-1 rounded-md border border-teal-100 bg-teal-50 px-4 py-2.5 text-sm font-bold text-teal-900">
-                Videos
+                {{ $isVideoLinkForm ? 'Videos' : 'Links' }}
             </div>
             @error('category')
                 <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
@@ -59,25 +61,39 @@
     </div>
 
     <div class="lg:col-span-2">
-        <label for="url" class="block text-sm font-semibold text-slate-700">{{ $isVideoLinkForm ? 'Video Link URL' : 'URL' }}</label>
+        <label for="url" class="block text-sm font-semibold text-slate-700">
+            @if ($isVideoLinkForm)
+                Video Link URL
+            @elseif ($isMediaLinkForm)
+                Media Link URL
+            @else
+                URL
+            @endif
+        </label>
         <input
             id="url"
             name="url"
             type="url"
             value="{{ old('url', $mediaItem->url) }}"
-            @required($isVideoLinkForm)
+            @required($isLinkOnlyForm)
             class="mt-1 block w-full rounded-md border-teal-100 text-slate-900 shadow-sm focus:border-teal-500 focus:ring-teal-500"
             placeholder="{{ $isVideoLinkForm ? 'https://youtube.com/watch?v=...' : 'https://example.com/resource' }}"
         >
         <p class="mt-2 text-xs text-slate-500">
-            {{ $isVideoLinkForm ? 'Paste a YouTube, Vimeo, Wistia, or other external video URL.' : 'Use this for video links, research URLs, embedded resources, or external documents.' }}
+            @if ($isVideoLinkForm)
+                Paste a YouTube, Vimeo, Wistia, or other external video URL.
+            @elseif ($isMediaLinkForm)
+                Paste an external article, research page, reference URL, or hosted media link.
+            @else
+                Use this for video links, research URLs, embedded resources, or external documents.
+            @endif
         </p>
         @error('url')
             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
         @enderror
     </div>
 
-    @unless ($isVideoLinkForm)
+    @unless ($isLinkOnlyForm)
         <div class="lg:col-span-2">
             <label for="media_file" class="block text-sm font-semibold text-slate-700">Upload file</label>
             <input
@@ -101,6 +117,34 @@
             @enderror
         </div>
     @endunless
+
+    @if ($isMediaLinkForm || old('category', $mediaItem->category) === 'links')
+        <div class="lg:col-span-2">
+            <label for="thumbnail_file" class="block text-sm font-semibold text-slate-700">Upload thumbnail</label>
+            <input
+                id="thumbnail_file"
+                name="thumbnail_file"
+                type="file"
+                class="mt-1 block w-full rounded-md border border-teal-100 bg-white text-sm text-slate-700 shadow-sm file:mr-4 file:border-0 file:bg-teal-50 file:px-4 file:py-2.5 file:text-sm file:font-bold file:text-teal-800 hover:file:bg-teal-100 focus:border-teal-500 focus:ring-teal-500"
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+            >
+            <p class="mt-2 text-xs text-slate-500">Upload a JPG, PNG, or WEBP thumbnail up to 5 MB for this media link.</p>
+            @if ($mediaItem->thumbnail_path)
+                <div class="mt-3 flex items-center gap-3 rounded-md border border-teal-100 bg-teal-50 px-4 py-3 text-sm text-teal-900">
+                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($mediaItem->thumbnail_path) }}" alt="" class="size-14 rounded-md object-cover">
+                    <div class="min-w-0">
+                        <p class="font-semibold">Current thumbnail</p>
+                        <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($mediaItem->thumbnail_path) }}" target="_blank" rel="noreferrer" class="block truncate underline decoration-teal-300 underline-offset-4">
+                            {{ $mediaItem->thumbnail_name ?? basename($mediaItem->thumbnail_path) }}
+                        </a>
+                    </div>
+                </div>
+            @endif
+            @error('thumbnail_file')
+                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+    @endif
 
     <div class="lg:col-span-2">
         <label for="description" class="block text-sm font-semibold text-slate-700">Description</label>

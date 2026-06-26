@@ -48,9 +48,18 @@
                         <a href="{{ route('admin.media.create', ['category' => 'documents']) }}" class="inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-3 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">
                             Add Media
                         </a>
+                        <a href="{{ route('admin.media.create', ['category' => 'links', 'mode' => 'media-link']) }}" class="inline-flex items-center justify-center rounded-md border border-teal-200/30 bg-white/[0.08] px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.12]">
+                            Add Media Link
+                        </a>
                         <a href="{{ route('admin.media.create', ['category' => 'videos', 'mode' => 'video-link']) }}" class="inline-flex items-center justify-center rounded-md border border-teal-200/30 bg-white/[0.08] px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.12]">
                             Add Video Link
                         </a>
+                        <form method="POST" action="{{ route('admin.media.update-seeder') }}">
+                            @csrf
+                            <button type="submit" class="inline-flex w-full items-center justify-center rounded-md border border-teal-200/30 bg-white/[0.08] px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.12]">
+                                Update Seeder
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -209,8 +218,15 @@
                             Create media
                             <span>+</span>
                         </a>
+                        <form method="POST" action="{{ route('admin.media.update-seeder') }}">
+                            @csrf
+                            <button type="submit" class="flex w-full items-center justify-between rounded-md border border-teal-100 bg-white px-4 py-3 text-left text-sm font-bold text-teal-900 transition hover:bg-teal-50">
+                                Update media seeder
+                                <span>DB</span>
+                            </button>
+                        </form>
                         <p class="rounded-md border border-slate-100 bg-white px-4 py-3 text-sm leading-6 text-slate-600">
-                            Use the table actions to update or delete existing records. Filters help narrow the queue by category or search term.
+                            Use the table actions to update or delete existing records. Exporting the seeder saves current media records, file paths, uploaded thumbnail paths, and external links.
                         </p>
                     </div>
                 </div>

@@ -2,6 +2,8 @@
 
 use App\Models\MediaItem;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 it('shows published admin media to authenticated users as read-only resources', function () {
     $user = User::factory()->create();
@@ -60,4 +62,25 @@ it('allows guests to open a direct media share link', function () {
         ->assertSee('This public link can be opened without creating an account.')
         ->assertSee('Open Link')
         ->assertDontSee('Login required');
+});
+
+it('allows guests to open a resource through the public open endpoint', function () {
+    Storage::fake('public');
+
+    $path = UploadedFile::fake()
+        ->create('hydrogen-guide.pdf', 128, 'application/pdf')
+        ->store('media/documents', 'public');
+
+    $mediaItem = MediaItem::create([
+        'title' => 'Public Hydrogen Guide',
+        'category' => 'documents',
+        'status' => 'published',
+        'description' => 'A guide that can be opened outside the portal.',
+        'file_path' => $path,
+        'file_name' => 'hydrogen-guide.pdf',
+        'mime_type' => 'application/pdf',
+    ]);
+
+    $this->get("http://localhost:8000/media/{$mediaItem->id}/open")
+        ->assertRedirect('http://localhost:8000'.Storage::disk('public')->url($path));
 });

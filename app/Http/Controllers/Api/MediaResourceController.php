@@ -71,8 +71,14 @@ class MediaResourceController extends Controller
     private function formatResource(MediaItem $mediaItem): array
     {
         $fileUrl = $mediaItem->file_path
-            ? url(Storage::disk('public')->url($mediaItem->file_path))
+            ? $this->absoluteUrl(Storage::disk('public')->url($mediaItem->file_path))
             : null;
+
+        $thumbnailUrl = $mediaItem->thumbnail_path
+            ? $this->absoluteUrl(Storage::disk('public')->url($mediaItem->thumbnail_path))
+            : $mediaItem->videoThumbnailUrl();
+
+        $resourceUrl = $fileUrl ?: $mediaItem->url;
 
         return [
             'id' => $mediaItem->id,
@@ -80,10 +86,15 @@ class MediaResourceController extends Controller
             'description' => $mediaItem->description,
             'category' => $mediaItem->category,
             'category_label' => self::CATEGORIES[$mediaItem->category] ?? ucfirst($mediaItem->category),
-            'shareable_link' => route('media.show', $mediaItem),
+            'shareable_link' => $this->absoluteUrl(route('media.show', $mediaItem, false)),
+            'open_resource_link' => $this->absoluteUrl(route('media.open', $mediaItem, false)),
             'url' => $mediaItem->url,
             'file_url' => $fileUrl,
-            'resource_url' => $fileUrl ?: $mediaItem->url,
+            'resource_url' => $resourceUrl,
+            'thumbnail_url' => $thumbnailUrl,
+            'thumbnail_name' => $mediaItem->thumbnail_name,
+            'thumbnail_size' => $mediaItem->thumbnail_size,
+            'thumbnail_mime_type' => $mediaItem->thumbnail_mime_type,
             'file_name' => $mediaItem->file_name,
             'file_size' => $mediaItem->file_size,
             'mime_type' => $mediaItem->mime_type,
@@ -92,5 +103,18 @@ class MediaResourceController extends Controller
             'created_at' => $mediaItem->created_at?->toISOString(),
             'updated_at' => $mediaItem->updated_at?->toISOString(),
         ];
+    }
+
+    private function absoluteUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        if (filter_var($path, FILTER_VALIDATE_URL)) {
+            return $path;
+        }
+
+        return rtrim((string) config('app.url'), '/').'/'.ltrim($path, '/');
     }
 }

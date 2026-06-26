@@ -38,16 +38,17 @@ it('returns published document resources with shareable links and file details',
         'url' => 'https://vimeo.com/published-video',
     ]);
 
-    $this->getJson('/api/resources/documents')
+    $this->getJson('http://localhost:8000/api/resources/documents')
         ->assertOk()
         ->assertJsonPath('category', 'documents')
         ->assertJsonPath('category_label', 'Documents')
         ->assertJsonPath('count', 1)
         ->assertJsonPath('data.0.title', 'Hydrogen Guide')
         ->assertJsonPath('data.0.description', 'A public document resource.')
-        ->assertJsonPath('data.0.shareable_link', route('media.show', $publishedDocument))
-        ->assertJsonPath('data.0.file_url', url(Storage::disk('public')->url($path)))
-        ->assertJsonPath('data.0.resource_url', url(Storage::disk('public')->url($path)))
+        ->assertJsonPath('data.0.shareable_link', "http://localhost:8000/media/{$publishedDocument->id}")
+        ->assertJsonPath('data.0.open_resource_link', "http://localhost:8000/media/{$publishedDocument->id}/open")
+        ->assertJsonPath('data.0.file_url', 'http://localhost:8000'.Storage::disk('public')->url($path))
+        ->assertJsonPath('data.0.resource_url', 'http://localhost:8000'.Storage::disk('public')->url($path))
         ->assertJsonPath('data.0.is_pdf', true)
         ->assertJsonPath('data.0.is_video', false)
         ->assertJsonMissing(['title' => 'Draft Guide'])
@@ -60,7 +61,7 @@ it('returns published video resources from the video endpoint', function () {
         'category' => 'videos',
         'status' => 'published',
         'description' => 'A public video resource.',
-        'url' => 'https://vimeo.com/hydrogen-product-replay',
+        'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     ]);
 
     $this->getJson('/api/resources/videos')
@@ -69,10 +70,52 @@ it('returns published video resources from the video endpoint', function () {
         ->assertJsonPath('category_label', 'Videos')
         ->assertJsonPath('count', 1)
         ->assertJsonPath('data.0.title', 'Hydrogen Product Replay')
-        ->assertJsonPath('data.0.url', 'https://vimeo.com/hydrogen-product-replay')
-        ->assertJsonPath('data.0.resource_url', 'https://vimeo.com/hydrogen-product-replay')
+        ->assertJsonPath('data.0.url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+        ->assertJsonPath('data.0.resource_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+        ->assertJsonPath('data.0.thumbnail_url', 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg')
         ->assertJsonPath('data.0.shareable_link', route('media.show', $video))
         ->assertJsonPath('data.0.is_video', true);
+});
+
+it('returns vimeo source thumbnails for video resources', function () {
+    MediaItem::create([
+        'title' => 'Hydrogen Vimeo Replay',
+        'category' => 'videos',
+        'status' => 'published',
+        'description' => 'A Vimeo video resource.',
+        'url' => 'https://vimeo.com/123456789',
+    ]);
+
+    $this->getJson('/api/resources/videos')
+        ->assertOk()
+        ->assertJsonPath('data.0.thumbnail_url', 'https://vumbnail.com/123456789.jpg');
+});
+
+it('returns uploaded thumbnails for media link resources', function () {
+    Storage::fake('public');
+
+    $thumbnailPath = UploadedFile::fake()
+        ->create('research-thumbnail.jpg', 64, 'image/jpeg')
+        ->store('media/thumbnails', 'public');
+
+    MediaItem::create([
+        'title' => 'Hydrogen Research Link',
+        'category' => 'links',
+        'status' => 'published',
+        'description' => 'A public media link resource.',
+        'url' => 'https://example.com/hydrogen-research',
+        'thumbnail_path' => $thumbnailPath,
+        'thumbnail_name' => 'research-thumbnail.jpg',
+        'thumbnail_size' => 65536,
+        'thumbnail_mime_type' => 'image/jpeg',
+    ]);
+
+    $this->getJson('http://localhost:8000/api/resources/links')
+        ->assertOk()
+        ->assertJsonPath('data.0.title', 'Hydrogen Research Link')
+        ->assertJsonPath('data.0.thumbnail_url', 'http://localhost:8000'.Storage::disk('public')->url($thumbnailPath))
+        ->assertJsonPath('data.0.thumbnail_name', 'research-thumbnail.jpg')
+        ->assertJsonPath('data.0.thumbnail_mime_type', 'image/jpeg');
 });
 
 it('exposes separate resource endpoints for every media category', function (string $category) {
