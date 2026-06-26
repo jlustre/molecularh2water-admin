@@ -20,6 +20,9 @@ Route::get('resources', [ResourcesController::class, 'index'])
 Route::get('media/{mediaItem}/open', [ResourcesController::class, 'open'])
     ->name('media.open');
 
+Route::get('media/{mediaItem}/thumbnail', [ResourcesController::class, 'thumbnail'])
+    ->name('media.thumbnail');
+
 Route::get('media/{mediaItem}', [ResourcesController::class, 'show'])
     ->name('media.show');
 

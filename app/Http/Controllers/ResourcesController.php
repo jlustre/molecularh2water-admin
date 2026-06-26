@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ResourcesController extends Controller
 {
@@ -59,23 +60,30 @@ class ResourcesController extends Controller
         ]);
     }
 
-    public function open(MediaItem $mediaItem): RedirectResponse
+    public function open(MediaItem $mediaItem): RedirectResponse|BinaryFileResponse
     {
-        $resourceUrl = $mediaItem->file_path
-            ? $this->absoluteUrl(Storage::disk('public')->url($mediaItem->file_path))
-            : $mediaItem->url;
+        if ($mediaItem->file_path) {
+            abort_unless(Storage::disk('public')->exists($mediaItem->file_path), 404);
 
-        abort_unless($resourceUrl, 404);
-
-        return redirect()->away($resourceUrl);
-    }
-
-    private function absoluteUrl(string $path): string
-    {
-        if (filter_var($path, FILTER_VALIDATE_URL)) {
-            return $path;
+            return response()->file(Storage::disk('public')->path($mediaItem->file_path), [
+                'Content-Type' => $mediaItem->mime_type ?: 'application/octet-stream',
+                'Content-Disposition' => 'inline; filename="'.($mediaItem->file_name ?: basename($mediaItem->file_path)).'"',
+            ]);
         }
 
-        return rtrim(request()->getSchemeAndHttpHost(), '/').'/'.ltrim($path, '/');
+        abort_unless($mediaItem->url, 404);
+
+        return redirect()->away($mediaItem->url);
+    }
+
+    public function thumbnail(MediaItem $mediaItem): BinaryFileResponse
+    {
+        abort_unless($mediaItem->thumbnail_path, 404);
+        abort_unless(Storage::disk('public')->exists($mediaItem->thumbnail_path), 404);
+
+        return response()->file(Storage::disk('public')->path($mediaItem->thumbnail_path), [
+            'Content-Type' => $mediaItem->thumbnail_mime_type ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="'.($mediaItem->thumbnail_name ?: basename($mediaItem->thumbnail_path)).'"',
+        ]);
     }
 }

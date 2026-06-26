@@ -47,8 +47,8 @@ it('returns published document resources with shareable links and file details',
         ->assertJsonPath('data.0.description', 'A public document resource.')
         ->assertJsonPath('data.0.shareable_link', "http://localhost:8000/media/{$publishedDocument->id}")
         ->assertJsonPath('data.0.open_resource_link', "http://localhost:8000/media/{$publishedDocument->id}/open")
-        ->assertJsonPath('data.0.file_url', 'http://localhost:8000'.Storage::disk('public')->url($path))
-        ->assertJsonPath('data.0.resource_url', 'http://localhost:8000'.Storage::disk('public')->url($path))
+        ->assertJsonPath('data.0.file_url', "http://localhost:8000/media/{$publishedDocument->id}/open")
+        ->assertJsonPath('data.0.resource_url', "http://localhost:8000/media/{$publishedDocument->id}/open")
         ->assertJsonPath('data.0.is_pdf', true)
         ->assertJsonPath('data.0.is_video', false)
         ->assertJsonMissing(['title' => 'Draft Guide'])
@@ -98,7 +98,7 @@ it('returns uploaded thumbnails for media link resources', function () {
         ->create('research-thumbnail.jpg', 64, 'image/jpeg')
         ->store('media/thumbnails', 'public');
 
-    MediaItem::create([
+    $mediaItem = MediaItem::create([
         'title' => 'Hydrogen Research Link',
         'category' => 'links',
         'status' => 'published',
@@ -113,7 +113,7 @@ it('returns uploaded thumbnails for media link resources', function () {
     $this->getJson('http://localhost:8000/api/resources/links')
         ->assertOk()
         ->assertJsonPath('data.0.title', 'Hydrogen Research Link')
-        ->assertJsonPath('data.0.thumbnail_url', 'http://localhost:8000'.Storage::disk('public')->url($thumbnailPath))
+        ->assertJsonPath('data.0.thumbnail_url', "http://localhost:8000/media/{$mediaItem->id}/thumbnail")
         ->assertJsonPath('data.0.thumbnail_name', 'research-thumbnail.jpg')
         ->assertJsonPath('data.0.thumbnail_mime_type', 'image/jpeg');
 });

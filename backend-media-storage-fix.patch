@@ -1,0 +1,117 @@
+diff --git a/app/Http/Controllers/Api/MediaResourceController.php b/app/Http/Controllers/Api/MediaResourceController.php
+--- a/app/Http/Controllers/Api/MediaResourceController.php
++++ b/app/Http/Controllers/Api/MediaResourceController.php
+@@
+-use Illuminate\Support\Facades\Storage;
+@@
+     private function formatResource(MediaItem $mediaItem): array
+     {
+         $fileUrl = $mediaItem->file_path
+-            ? $this->absoluteUrl(Storage::disk('public')->url($mediaItem->file_path))
++            ? $this->absoluteUrl(route('media.open', $mediaItem, false))
+             : null;
+ 
+         $thumbnailUrl = $mediaItem->thumbnail_path
+-            ? $this->absoluteUrl(Storage::disk('public')->url($mediaItem->thumbnail_path))
++            ? $this->absoluteUrl(route('media.thumbnail', $mediaItem, false))
+             : $mediaItem->videoThumbnailUrl();
+diff --git a/app/Http/Controllers/ResourcesController.php b/app/Http/Controllers/ResourcesController.php
+--- a/app/Http/Controllers/ResourcesController.php
++++ b/app/Http/Controllers/ResourcesController.php
+@@
+ use App\Models\MediaItem;
+ use Illuminate\Http\RedirectResponse;
+ use Illuminate\Http\Request;
++use Symfony\Component\HttpFoundation\BinaryFileResponse;
+ use Illuminate\Support\Facades\Storage;
+ use Illuminate\View\View;
+@@
+-    public function open(MediaItem $mediaItem): RedirectResponse
++    public function open(MediaItem $mediaItem): BinaryFileResponse|RedirectResponse
+     {
+-        $resourceUrl = $mediaItem->file_path
+-            ? $this->absoluteUrl(Storage::disk('public')->url($mediaItem->file_path))
+-            : $mediaItem->url;
++        if ($mediaItem->file_path) {
++            abort_unless(Storage::disk('public')->exists($mediaItem->file_path), 404);
++
++            return response()->file(Storage::disk('public')->path($mediaItem->file_path), [
++                'Content-Type' => $mediaItem->mime_type ?: 'application/octet-stream',
++                'Content-Disposition' => 'inline; filename="'.($mediaItem->file_name ?: basename($mediaItem->file_path)).'"',
++            ]);
++        }
++
++        $resourceUrl = $mediaItem->url;
+ 
+         abort_unless($resourceUrl, 404);
+ 
+         return redirect()->away($resourceUrl);
+     }
++
++    public function thumbnail(MediaItem $mediaItem): BinaryFileResponse
++    {
++        abort_unless($mediaItem->thumbnail_path, 404);
++        abort_unless(Storage::disk('public')->exists($mediaItem->thumbnail_path), 404);
++
++        return response()->file(Storage::disk('public')->path($mediaItem->thumbnail_path), [
++            'Content-Type' => $mediaItem->thumbnail_mime_type ?: 'application/octet-stream',
++            'Content-Disposition' => 'inline; filename="'.($mediaItem->thumbnail_name ?: basename($mediaItem->thumbnail_path)).'"',
++        ]);
++    }
+diff --git a/routes/web.php b/routes/web.php
+--- a/routes/web.php
++++ b/routes/web.php
+@@
+ Route::get('media/{mediaItem}/open', [ResourcesController::class, 'open'])
+     ->name('media.open');
+ 
++Route::get('media/{mediaItem}/thumbnail', [ResourcesController::class, 'thumbnail'])
++    ->name('media.thumbnail');
++
+ Route::get('media/{mediaItem}', [ResourcesController::class, 'show'])
+     ->name('media.show');
+diff --git a/tests/Feature/Api/MediaResourcesApiTest.php b/tests/Feature/Api/MediaResourcesApiTest.php
+--- a/tests/Feature/Api/MediaResourcesApiTest.php
++++ b/tests/Feature/Api/MediaResourcesApiTest.php
+@@
+-        ->assertJsonPath('data.0.file_url', 'http://localhost:8000'.Storage::disk('public')->url($path))
+-        ->assertJsonPath('data.0.resource_url', 'http://localhost:8000'.Storage::disk('public')->url($path))
++        ->assertJsonPath('data.0.file_url', "http://localhost:8000/media/{$publishedDocument->id}/open")
++        ->assertJsonPath('data.0.resource_url', "http://localhost:8000/media/{$publishedDocument->id}/open")
+@@
+-    MediaItem::create([
++    $mediaItem = MediaItem::create([
+@@
+-        ->assertJsonPath('data.0.thumbnail_url', 'http://localhost:8000'.Storage::disk('public')->url($thumbnailPath))
++        ->assertJsonPath('data.0.thumbnail_url', "http://localhost:8000/media/{$mediaItem->id}/thumbnail")
+diff --git a/tests/Feature/ResourcesTest.php b/tests/Feature/ResourcesTest.php
+--- a/tests/Feature/ResourcesTest.php
++++ b/tests/Feature/ResourcesTest.php
+@@
+     $this->get("http://localhost:8000/media/{$mediaItem->id}/open")
+-        ->assertRedirect('http://localhost:8000'.Storage::disk('public')->url($path));
++        ->assertOk()
++        ->assertHeader('content-type', 'application/pdf');
+ });
++
++it('allows guests to view an uploaded thumbnail through the public thumbnail endpoint', function () {
++    Storage::fake('public');
++
++    $path = UploadedFile::fake()
++        ->create('hydrogen-thumbnail.jpg', 64, 'image/jpeg')
++        ->store('media/thumbnails', 'public');
++
++    $mediaItem = MediaItem::create([
++        'title' => 'Public Hydrogen Link',
++        'category' => 'links',
++        'status' => 'published',
++        'url' => 'https://example.com/hydrogen',
++        'thumbnail_path' => $path,
++        'thumbnail_name' => 'hydrogen-thumbnail.jpg',
++        'thumbnail_mime_type' => 'image/jpeg',
++    ]);
++
++    $this->get("http://localhost:8000/media/{$mediaItem->id}/thumbnail")
++        ->assertOk()
++        ->assertHeader('content-type', 'image/jpeg');
++});

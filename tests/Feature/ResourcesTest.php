@@ -82,5 +82,28 @@ it('allows guests to open a resource through the public open endpoint', function
     ]);
 
     $this->get("http://localhost:8000/media/{$mediaItem->id}/open")
-        ->assertRedirect('http://localhost:8000'.Storage::disk('public')->url($path));
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+it('allows guests to view an uploaded thumbnail through the public thumbnail endpoint', function () {
+    Storage::fake('public');
+
+    $path = UploadedFile::fake()
+        ->create('hydrogen-thumbnail.jpg', 64, 'image/jpeg')
+        ->store('media/thumbnails', 'public');
+
+    $mediaItem = MediaItem::create([
+        'title' => 'Public Hydrogen Link',
+        'category' => 'links',
+        'status' => 'published',
+        'url' => 'https://example.com/hydrogen',
+        'thumbnail_path' => $path,
+        'thumbnail_name' => 'hydrogen-thumbnail.jpg',
+        'thumbnail_mime_type' => 'image/jpeg',
+    ]);
+
+    $this->get("http://localhost:8000/media/{$mediaItem->id}/thumbnail")
+        ->assertOk()
+        ->assertHeader('content-type', 'image/jpeg');
 });

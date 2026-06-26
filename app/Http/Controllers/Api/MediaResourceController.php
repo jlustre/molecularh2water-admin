@@ -70,12 +70,11 @@ class MediaResourceController extends Controller
      */
     private function formatResource(MediaItem $mediaItem): array
     {
-        $fileUrl = $mediaItem->file_path
-            ? $this->absoluteUrl(Storage::disk('public')->url($mediaItem->file_path))
-            : null;
+        $openResourceUrl = $this->absoluteUrl(route('media.open', $mediaItem, false));
+        $fileUrl = $mediaItem->file_path ? $openResourceUrl : null;
 
         $thumbnailUrl = $mediaItem->thumbnail_path
-            ? $this->absoluteUrl(Storage::disk('public')->url($mediaItem->thumbnail_path))
+            ? $this->absoluteUrl(route('media.thumbnail', $mediaItem, false))
             : $mediaItem->videoThumbnailUrl();
 
         $resourceUrl = $fileUrl ?: $mediaItem->url;
@@ -87,7 +86,7 @@ class MediaResourceController extends Controller
             'category' => $mediaItem->category,
             'category_label' => self::CATEGORIES[$mediaItem->category] ?? ucfirst($mediaItem->category),
             'shareable_link' => $this->absoluteUrl(route('media.show', $mediaItem, false)),
-            'open_resource_link' => $this->absoluteUrl(route('media.open', $mediaItem, false)),
+            'open_resource_link' => $openResourceUrl,
             'url' => $mediaItem->url,
             'file_url' => $fileUrl,
             'resource_url' => $resourceUrl,
