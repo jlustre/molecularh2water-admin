@@ -148,3 +148,27 @@ it('falls back to the external url when a stored file is missing', function () {
     $this->get("http://localhost:8000/media/{$mediaItem->id}/open")
         ->assertRedirect('https://example.com/fallback-research.pdf');
 });
+
+it('returns a diagnostic response when opening a missing media item', function () {
+    $this->getJson('http://localhost:8000/media/11/open')
+        ->assertNotFound()
+        ->assertJsonPath('message', 'Media item not found.')
+        ->assertJsonPath('media_id', '11');
+});
+
+it('returns a diagnostic response when a media item has no accessible resource', function () {
+    $mediaItem = MediaItem::create([
+        'title' => 'Broken Upload',
+        'category' => 'documents',
+        'status' => 'published',
+        'file_path' => 'media/documents/missing-upload.pdf',
+        'file_name' => 'missing-upload.pdf',
+        'mime_type' => 'application/pdf',
+    ]);
+
+    $this->getJson("http://localhost:8000/media/{$mediaItem->id}/open")
+        ->assertNotFound()
+        ->assertJsonPath('message', 'Media item has no accessible file or URL.')
+        ->assertJsonPath('media_id', $mediaItem->id)
+        ->assertJsonPath('file_path', 'media/documents/missing-upload.pdf');
+});

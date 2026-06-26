@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MediaItem;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -60,8 +61,18 @@ class ResourcesController extends Controller
         ]);
     }
 
-    public function open(MediaItem $mediaItem): RedirectResponse|BinaryFileResponse
+    public function open(int|string $mediaItem): RedirectResponse|BinaryFileResponse|JsonResponse
     {
+        $requestedMediaId = (string) $mediaItem;
+        $mediaItem = MediaItem::query()->find($requestedMediaId);
+
+        if (! $mediaItem) {
+            return response()->json([
+                'message' => 'Media item not found.',
+                'media_id' => $requestedMediaId,
+            ], 404);
+        }
+
         if ($mediaItem->file_path) {
             $path = $this->publicDiskPath($mediaItem->file_path);
 
@@ -77,7 +88,14 @@ class ResourcesController extends Controller
             }
         }
 
-        abort_unless($mediaItem->url, 404);
+        if (! $mediaItem->url) {
+            return response()->json([
+                'message' => 'Media item has no accessible file or URL.',
+                'media_id' => $mediaItem->id,
+                'file_path' => $mediaItem->file_path,
+                'checked_paths' => $mediaItem->file_path ? $this->candidatePublicPaths($mediaItem->file_path) : [],
+            ], 404);
+        }
 
         return redirect()->away($mediaItem->url);
     }
@@ -117,5 +135,23 @@ class ResourcesController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function candidatePublicPaths(string $path): array
+    {
+        $normalizedPath = ltrim($path, '/');
+        $paths = [
+            Storage::disk('public')->path($path),
+            public_path('storage/'.$normalizedPath),
+        ];
+
+        if (str_starts_with($normalizedPath, 'storage/')) {
+            $paths[] = public_path($normalizedPath);
+        }
+
+        return array_values(array_unique($paths));
     }
 }
