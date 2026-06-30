@@ -47,7 +47,6 @@ class WarrantyRegistrationController extends Controller
             ->withQueryString();
 
         return view('admin.warranty-registrations.index', [
-            'environmentLabel' => FrontendUrl::environmentLabel(),
             'machineModels' => WarrantyRegistration::query()
                 ->select('machine_model')
                 ->distinct()

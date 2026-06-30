@@ -25,4 +25,15 @@ class FrontendUrl
     {
         return (string) config('frontend.environment_label', 'Production');
     }
+
+    public static function environmentKey(): string
+    {
+        $environment = app()->environment();
+
+        if (in_array($environment, ['local', 'staging', 'production'], true)) {
+            return $environment;
+        }
+
+        return 'production';
+    }
 }

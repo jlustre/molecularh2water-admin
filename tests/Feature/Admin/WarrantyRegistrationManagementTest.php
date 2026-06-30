@@ -27,7 +27,8 @@ it('allows an admin to manage warranty registrations', function () {
         ->assertOk()
         ->assertSee('Warranty Registrations')
         ->assertSee('http://localhost:8000/warranty')
-        ->assertSee('Local')
+        ->assertSee('Registration Records')
+        ->assertSee('Customer warranty submissions')
         ->assertSee('Jane Owner')
         ->assertSee('H2-ADMIN-001');
 
@@ -72,19 +73,26 @@ it('allows an admin to manage warranty registrations', function () {
 });
 
 it('resolves frontend warranty urls by environment defaults', function () {
-    config(['frontend.url' => 'http://localhost:8000']);
+    config(['frontend.url' => 'http://localhost:8000', 'frontend.environment_label' => 'Local']);
     expect(FrontendUrl::warrantyRegistration())->toBe('http://localhost:8000/warranty');
 
+    app()->detectEnvironment(fn () => 'local');
+    expect(FrontendUrl::environmentKey())->toBe('local');
+
+    app()->detectEnvironment(fn () => 'staging');
     config([
         'frontend.url' => 'https://staging.molecularh2water.com',
         'frontend.environment_label' => 'Staging',
     ]);
     expect(FrontendUrl::warrantyRegistration())->toBe('https://staging.molecularh2water.com/warranty');
     expect(FrontendUrl::environmentLabel())->toBe('Staging');
+    expect(FrontendUrl::environmentKey())->toBe('staging');
 
+    app()->detectEnvironment(fn () => 'production');
     config([
         'frontend.url' => 'https://www.molecularh2water.com',
         'frontend.environment_label' => 'Production',
     ]);
     expect(FrontendUrl::warrantyRegistration())->toBe('https://www.molecularh2water.com/warranty');
+    expect(FrontendUrl::environmentKey())->toBe('production');
 });
