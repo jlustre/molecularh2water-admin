@@ -83,6 +83,7 @@
           ->map(fn ($part) => mb_substr($part, 0, 1))
           ->join('');
         $initials = $initials !== '' ? mb_strtoupper($initials) : 'AU';
+        $avatarUrl = $user?->avatar_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($user->avatar_path) : null;
       @endphp
 
       <details class="group relative flex items-center gap-2 pl-2">
@@ -91,7 +92,11 @@
           class="flex cursor-pointer list-none items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-teal-50/80 focus:outline-none focus:ring-2 focus:ring-teal-400 [&::-webkit-details-marker]:hidden"
         >
           <span class="relative flex items-center">
-            <span class="inline-flex w-10 h-10 rounded-full bg-gradient-to-br from-teal-400/80 to-teal-700/80 border-2 border-white shadow-inner items-center justify-center text-white font-bold text-sm">{{ $initials }}</span>
+            @if ($avatarUrl)
+              <img src="{{ $avatarUrl }}" alt="{{ $userName }} avatar" class="h-10 w-10 rounded-full border-2 border-white object-cover shadow-inner">
+            @else
+              <span class="inline-flex w-10 h-10 rounded-full bg-gradient-to-br from-teal-400/80 to-teal-700/80 border-2 border-white shadow-inner items-center justify-center text-white font-bold text-sm">{{ $initials }}</span>
+            @endif
             <span class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full"></span>
           </span>
           <span class="hidden sm:flex flex-col items-start ml-1">

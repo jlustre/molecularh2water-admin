@@ -5,6 +5,7 @@ use App\Livewire\Admin\Dashboard;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\WarrantyRegistrationController;
 use App\Http\Controllers\ResourcesController;
 
 Route::view('/', 'welcome');
@@ -58,6 +59,8 @@ Route::middleware(['auth'])
         })->name('settings.sidebar-design');
             Route::view('/contact-messages', 'admin.placeholders.contact-messages')->name('contact-messages');
             Route::view('/appointments', 'admin.placeholders.appointments')->name('appointments');
+        Route::resource('/warranty-registrations', WarrantyRegistrationController::class)
+            ->except(['create', 'store']);
         Route::resource('/users', UserController::class)->except('show');
         Route::resource('/roles', RoleController::class)->except('show');
     });

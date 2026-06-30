@@ -72,7 +72,7 @@ it('allows an admin to manage users', function () {
         ->delete(route('admin.users.destroy', $existingUser))
         ->assertRedirect(route('admin.users.index'));
 
-    $this->assertDatabaseMissing('users', [
+    $this->assertSoftDeleted('users', [
         'id' => $existingUser->id,
     ]);
 });

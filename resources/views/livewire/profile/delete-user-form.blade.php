@@ -13,6 +13,8 @@ new class extends Component
      */
     public function deleteUser(Logout $logout): void
     {
+        abort_unless(Auth::user()?->hasRole('super-admin'), 403);
+
         $this->validate([
             'password' => ['required', 'string', 'current_password'],
         ]);
@@ -25,11 +27,15 @@ new class extends Component
 
 <section class="space-y-6">
     <header>
-        <h2 class="text-lg font-medium text-gray-900">
-            {{ __('Delete Account') }}
+        <p class="text-xs font-bold uppercase tracking-[0.2em] text-red-600">
+            {{ __('Danger Zone') }}
+        </p>
+
+        <h2 class="mt-2 text-2xl font-black tracking-normal text-slate-950">
+            {{ __('Delete account') }}
         </h2>
 
-        <p class="mt-1 text-sm text-gray-600">
+        <p class="mt-2 text-sm leading-6 text-slate-500">
             {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.') }}
         </p>
     </header>
@@ -42,11 +48,15 @@ new class extends Component
     <x-modal name="confirm-user-deletion" :show="$errors->isNotEmpty()" focusable>
         <form wire:submit="deleteUser" class="p-6">
 
-            <h2 class="text-lg font-medium text-gray-900">
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-red-600">
+                {{ __('Final Confirmation') }}
+            </p>
+
+            <h2 class="mt-2 text-xl font-black tracking-normal text-slate-950">
                 {{ __('Are you sure you want to delete your account?') }}
             </h2>
 
-            <p class="mt-1 text-sm text-gray-600">
+            <p class="mt-2 text-sm leading-6 text-slate-500">
                 {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
             </p>
 
@@ -58,7 +68,7 @@ new class extends Component
                     id="password"
                     name="password"
                     type="password"
-                    class="mt-1 block w-3/4"
+                    class="mt-1 block w-full border-red-100 focus:border-red-600 focus:ring-red-600 sm:w-3/4"
                     placeholder="{{ __('Password') }}"
                 />
 

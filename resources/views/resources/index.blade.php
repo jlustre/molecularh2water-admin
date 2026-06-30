@@ -8,6 +8,7 @@
         ->map(fn ($part) => mb_substr($part, 0, 1))
         ->join('');
     $initials = $initials !== '' ? mb_strtoupper($initials) : 'AU';
+    $avatarUrl = $user?->avatar_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($user->avatar_path) : null;
 
     $sidebarLinks = [
         ['label' => 'Dashboard', 'href' => route('dashboard'), 'active' => false, 'icon' => 'dashboard'],
@@ -134,7 +135,11 @@
                                 <details class="group relative">
                                     <summary aria-label="Open user menu" class="flex cursor-pointer list-none items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-400 [&::-webkit-details-marker]:hidden">
                                         <span class="relative flex items-center">
-                                            <span class="inline-flex size-10 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-teal-400/80 to-teal-700/80 text-sm font-bold text-white shadow-inner">{{ $initials }}</span>
+                                            @if ($avatarUrl)
+                                                <img src="{{ $avatarUrl }}" alt="{{ $userName }} avatar" class="size-10 rounded-full border-2 border-white object-cover shadow-inner">
+                                            @else
+                                                <span class="inline-flex size-10 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-teal-400/80 to-teal-700/80 text-sm font-bold text-white shadow-inner">{{ $initials }}</span>
+                                            @endif
                                             <span class="absolute bottom-0 right-0 size-3 rounded-full border-2 border-white bg-emerald-400"></span>
                                         </span>
                                         <span class="hidden flex-col items-start sm:flex">

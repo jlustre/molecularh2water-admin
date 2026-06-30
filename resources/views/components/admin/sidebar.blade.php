@@ -140,6 +140,16 @@
         </span>
         <span style="font-size:13.5px;color:rgba(255,255,255,0.75);flex:1;">Appointments</span>
       </a>
+      <a href="{{ route('admin.warranty-registrations.index') }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;text-decoration:none;margin-bottom:2px;" onmouseover="this.style.background='rgba(20,184,166,0.08)'" onmouseout="this.style.background='transparent'">
+        <span style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="2.5" y="3" width="11" height="10" rx="1.5" stroke="rgba(45,212,191,0.6)" stroke-width="1.2"/>
+            <path d="M5.5 6.5 7.5 8.5 10.5 5.5" stroke="rgba(45,212,191,0.6)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 2.5h8" stroke="rgba(45,212,191,0.6)" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span style="font-size:13.5px;color:rgba(255,255,255,0.75);flex:1;">Warranty Registrations</span>
+      </a>
     </div>
     <!-- System -->
     <div style="margin-top:16px;margin-bottom:4px;">
