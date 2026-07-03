@@ -316,12 +316,20 @@ return new class extends Migration
      */
     private function finalizeLeadsTable(array $lifecycleIds): void
     {
-        Schema::table('leads', function (Blueprint $table) {
-            if (Schema::hasColumn('leads', 'referred_by_lead_id')) {
+        if (Schema::hasColumn('leads', 'referred_by_lead_id')) {
+            Schema::table('leads', function (Blueprint $table) {
                 $table->dropConstrainedForeignId('referred_by_lead_id');
-            }
+            });
+        }
 
-            $table->dropIndex(['lifecycle', 'status']);
+        if (! Schema::hasColumn('leads', 'lifecycle')) {
+            return;
+        }
+
+        // Index may be missing if the create migration failed partway or used a prefix fallback.
+        $this->dropIndexIfExists('leads', 'leads_lifecycle_status_index');
+
+        Schema::table('leads', function (Blueprint $table) {
             $table->dropColumn('lifecycle');
         });
     }
@@ -345,7 +353,7 @@ return new class extends Migration
             }
 
             foreach ($indexesByTable[$tableName] ?? [] as $indexName) {
-                $this->dropIndexIfExists($indexName);
+                $this->dropIndexIfExists($tableName, $indexName);
             }
 
             Schema::table($tableName, function (Blueprint $table) {
@@ -354,10 +362,10 @@ return new class extends Migration
         }
     }
 
-    private function dropIndexIfExists(string $indexName): void
+    private function dropIndexIfExists(string $table, string $indexName): void
     {
         try {
-            DB::statement('DROP INDEX IF EXISTS '.$indexName);
+            DB::statement("ALTER TABLE `{$table}` DROP INDEX `{$indexName}`");
         } catch (\Throwable) {
             // Ignore missing indexes across database engines.
         }
