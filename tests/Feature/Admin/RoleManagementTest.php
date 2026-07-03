@@ -5,7 +5,7 @@ use App\Models\User;
 use Database\Seeders\RolesSeeder;
 
 it('allows an admin to manage roles and assigned users', function () {
-    $admin = User::factory()->create();
+    $admin = superAdminUser();
     $assignedUser = User::factory()->create([
         'name' => 'Taylor Member',
         'email' => 'taylor.member@example.com',
@@ -84,7 +84,7 @@ it('allows an admin to manage roles and assigned users', function () {
 });
 
 it('prevents deleting system roles', function () {
-    $admin = User::factory()->create();
+    $admin = superAdminUser();
     $role = Role::create([
         'name' => 'System Admin',
         'slug' => 'system-admin',
@@ -107,7 +107,7 @@ it('prevents deleting system roles', function () {
 it('seeds the default access roles', function () {
     $this->seed(RolesSeeder::class);
 
-    foreach (['super-admin', 'admin', 'manager', 'editor', 'member'] as $slug) {
+    foreach (['super-admin', 'team-admin', 'admin', 'manager', 'consultant', 'editor', 'member'] as $slug) {
         $this->assertDatabaseHas('roles', [
             'slug' => $slug,
             'status' => 'active',
@@ -118,5 +118,6 @@ it('seeds the default access roles', function () {
     expect(Role::where('slug', 'super-admin')->first()->permissions)
         ->toContain('users.delete', 'settings.manage');
 
-    expect(Role::where('slug', 'member')->first()->permissions)->toBe([]);
+    expect(Role::where('slug', 'member')->first()->permissions)
+        ->toContain('portal.dashboard.view', 'invites.manage', 'media.view', 'leads.view', 'crm.dashboard.view');
 });

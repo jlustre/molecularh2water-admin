@@ -2,37 +2,51 @@
 
 use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\RolesSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
 
+beforeEach(function () {
+    $this->seed(RolesSeeder::class);
+});
+
 test('profile page is displayed', function () {
     $user = User::factory()->create();
+    $user->roles()->attach(Role::query()->where('slug', 'member')->first());
 
     $this->actingAs($user);
 
     $response = $this->get('/profile');
 
-    $response
+    $html = $response
         ->assertOk()
-        ->assertSee('Client Portal')
+        ->assertSee('Associate Portal')
+        ->assertSee('layoutSidebar()')
         ->assertSee('Workspace')
         ->assertSee('Profile Center')
-        ->assertSee('Account Health')
+        ->assertSee('Account Overview')
+        ->assertSee('Email Status')
+        ->assertSee('Business Lines')
         ->assertSee('Security Notes')
         ->assertDontSee('Danger Zone')
         ->assertSeeVolt('profile.update-profile-information-form')
-        ->assertSeeVolt('profile.update-password-form');
+        ->assertSeeVolt('profile.update-password-form')
+        ->assertSee('Saving profile...')
+        ->assertSee('Updating password...')
+        ->getContent();
+
+    expect($html)
+        ->toContain('data-portal-profile-form-scope')
+        ->toContain('data-portal-page-loading-overlay')
+        ->toContain('portalPageLoadingOverlay');
+
+    expect(preg_match_all('/data-portal-page-loading-overlay(?=[\s>])/i', $html))->toBe(2);
 });
 
 test('delete account panel is displayed for super admins', function () {
-    $role = Role::create([
-        'name' => 'Super Admin',
-        'slug' => 'super-admin',
-        'status' => 'active',
-    ]);
     $user = User::factory()->create();
-    $user->roles()->attach($role);
+    $user->roles()->attach(Role::query()->where('slug', 'super-admin')->first());
 
     $this->actingAs($user);
 
@@ -110,13 +124,8 @@ test('email verification status is unchanged when the email address is unchanged
 });
 
 test('super admin can soft delete their account', function () {
-    $role = Role::create([
-        'name' => 'Super Admin',
-        'slug' => 'super-admin',
-        'status' => 'active',
-    ]);
     $user = User::factory()->create();
-    $user->roles()->attach($role);
+    $user->roles()->attach(Role::query()->where('slug', 'super-admin')->first());
 
     $this->actingAs($user);
 
@@ -133,13 +142,8 @@ test('super admin can soft delete their account', function () {
 });
 
 test('correct password must be provided to delete account', function () {
-    $role = Role::create([
-        'name' => 'Super Admin',
-        'slug' => 'super-admin',
-        'status' => 'active',
-    ]);
     $user = User::factory()->create();
-    $user->roles()->attach($role);
+    $user->roles()->attach(Role::query()->where('slug', 'super-admin')->first());
 
     $this->actingAs($user);
 

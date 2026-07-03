@@ -10,7 +10,7 @@ it('allows an admin to manage warranty registrations', function () {
         'frontend.environment_label' => 'Local',
     ]);
 
-    $admin = User::factory()->create(['name' => 'Admin User']);
+    $admin = superAdminUser(['name' => 'Admin User']);
     $registration = WarrantyRegistration::create([
         'customer_name' => 'Jane Owner',
         'email' => 'jane@example.com',

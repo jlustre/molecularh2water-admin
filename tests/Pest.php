@@ -44,7 +44,14 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function superAdminUser(array $attributes = []): \App\Models\User
 {
-    // ..
+    test()->seed(\Database\Seeders\RolesSeeder::class);
+
+    $user = \App\Models\User::factory()->create($attributes);
+    $user->roles()->attach(
+        \App\Models\Role::query()->where('slug', 'super-admin')->value('id')
+    );
+
+    return $user;
 }

@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" x-data="{ sidebarOpen: window.innerWidth >= 1024 }" x-cloak>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin | {{ config('app.name') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
-    <script defer src="//unpkg.com/alpinejs"></script>
 </head>
 <body class="bg-gray-50 text-gray-900">
-    <div class="flex h-screen">
-        <!-- Sidebar -->
+    <x-portal.page-loading />
+
+    <div class="flex h-screen" x-data="layoutSidebar()" x-cloak>
         <div
             x-show="sidebarOpen"
             x-transition.opacity
             class="fixed inset-0 z-40 bg-slate-950/45 lg:hidden"
-            @click="sidebarOpen = false"
+            @click="closeSidebar()"
             aria-hidden="true"
         ></div>
 
@@ -27,18 +27,15 @@
             x-transition:leave="transition ease-in duration-150"
             x-transition:leave-start="translate-x-0 opacity-100"
             x-transition:leave-end="-translate-x-full opacity-0"
-            class="fixed inset-y-0 left-0 z-50 shrink-0 lg:static lg:z-auto"
+            class="fixed inset-y-0 left-0 z-50 w-[280px] shrink-0 lg:relative lg:z-auto"
         >
             <x-admin.sidebar />
         </aside>
 
-        <!-- Main content -->
-        <div class="flex-1 flex flex-col min-w-0">
-            <!-- Topbar -->
+        <div class="flex min-w-0 flex-1 flex-col">
             <x-admin.topbar />
 
-            <!-- Page Content -->
-            <main class="flex-1 p-6 overflow-y-auto">
+            <main class="flex-1 overflow-y-auto p-6">
                 @if (isset($slot))
                     {{ $slot }}
                 @else
@@ -47,6 +44,7 @@
             </main>
         </div>
     </div>
+    @stack('scripts')
     @livewireScripts
 </body>
 </html>

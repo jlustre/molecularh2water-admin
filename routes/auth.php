@@ -6,6 +6,9 @@ use Livewire\Volt\Volt;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 Route::middleware('guest')->group(function () {
+    Volt::route('register/invite/{code}', 'pages.auth.register')
+        ->name('register.invite');
+
     Volt::route('register', 'pages.auth.register')
         ->name('register');
 
@@ -19,13 +22,15 @@ Route::middleware('guest')->group(function () {
         ->name('password.reset');
 });
 
+// Signed link is proof of ownership — do not require an existing session.
+// Accepts relative (host-agnostic) and legacy absolute signatures.
+Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
+    ->middleware(['verification.signature', 'throttle:6,1'])
+    ->name('verification.verify');
+
 Route::middleware('auth')->group(function () {
     Volt::route('verify-email', 'pages.auth.verify-email')
         ->name('verification.notice');
-
-    Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
-        ->middleware(['signed', 'throttle:6,1'])
-        ->name('verification.verify');
 
     Volt::route('confirm-password', 'pages.auth.confirm-password')
         ->name('password.confirm');

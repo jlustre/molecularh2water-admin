@@ -3,102 +3,77 @@
 namespace Database\Seeders;
 
 use App\Models\Role;
+use App\Support\Crm\CrmPermissions;
 use Illuminate\Database\Seeder;
 
 class RolesSeeder extends Seeder
 {
-    /**
-     * Seed the default access roles.
-     */
     public function run(): void
     {
-        $allPermissions = [
-            'admin.dashboard.view',
-            'media.view',
-            'media.create',
-            'media.update',
-            'media.delete',
-            'media.export',
-            'users.view',
-            'users.create',
-            'users.update',
-            'users.delete',
-            'pages.manage',
-            'blog.manage',
-            'faqs.manage',
-            'testimonials.manage',
-            'leads.manage',
-            'appointments.manage',
-            'messages.manage',
-            'settings.manage',
-        ];
+        $defaults = CrmPermissions::defaultsByRole();
 
         $roles = [
             [
-                'name' => 'Super Admin',
+                'name' => 'Joey Lustre',
                 'slug' => 'super-admin',
-                'description' => 'Full system access across users, roles, media, content, operations, and settings.',
+                'description' => 'Complete access to the website, admin area, CRM, users, and system settings.',
                 'status' => 'active',
                 'color' => 'teal',
-                'permissions' => $allPermissions,
+                'permissions' => $defaults['super-admin'],
+                'is_system' => true,
+            ],
+            [
+                'name' => 'Team Admin',
+                'slug' => 'team-admin',
+                'description' => 'Leads a team: manages managers and consultants, team-scoped CRM oversight, and admin tools.',
+                'status' => 'active',
+                'color' => 'cyan',
+                'permissions' => $defaults['team-admin'],
                 'is_system' => true,
             ],
             [
                 'name' => 'Admin',
                 'slug' => 'admin',
-                'description' => 'Administrative access for daily management without protected system ownership.',
+                'description' => 'Organization administrator with full CRM visibility and daily operations.',
                 'status' => 'active',
-                'color' => 'cyan',
-                'permissions' => array_values(array_diff($allPermissions, ['users.delete', 'settings.manage'])),
+                'color' => 'blue',
+                'permissions' => $defaults['admin'],
                 'is_system' => true,
             ],
             [
                 'name' => 'Manager',
                 'slug' => 'manager',
-                'description' => 'Operational access for media, leads, appointments, messages, and content review.',
+                'description' => 'Team manager with pipeline, reports, and visibility across assigned team members.',
                 'status' => 'active',
                 'color' => 'emerald',
-                'permissions' => [
-                    'admin.dashboard.view',
-                    'media.view',
-                    'media.create',
-                    'media.update',
-                    'media.export',
-                    'pages.manage',
-                    'blog.manage',
-                    'faqs.manage',
-                    'testimonials.manage',
-                    'leads.manage',
-                    'appointments.manage',
-                    'messages.manage',
-                ],
+                'permissions' => $defaults['manager'],
+                'is_system' => true,
+            ],
+            [
+                'name' => 'Consultant',
+                'slug' => 'consultant',
+                'description' => 'Field associate with portal CRM access to assigned leads, tasks, and calendar.',
+                'status' => 'active',
+                'color' => 'indigo',
+                'permissions' => $defaults['consultant'],
                 'is_system' => true,
             ],
             [
                 'name' => 'Editor',
                 'slug' => 'editor',
-                'description' => 'Content and media publishing access without user or system settings control.',
+                'description' => 'Content and media publishing without CRM access.',
                 'status' => 'active',
                 'color' => 'amber',
-                'permissions' => [
-                    'admin.dashboard.view',
-                    'media.view',
-                    'media.create',
-                    'media.update',
-                    'pages.manage',
-                    'blog.manage',
-                    'faqs.manage',
-                    'testimonials.manage',
-                ],
+                'permissions' => $defaults['editor'],
                 'is_system' => true,
             ],
             [
                 'name' => 'Member',
                 'slug' => 'member',
-                'description' => 'Default registered user role for read-only member portal access.',
+                'description' => 'Registered portal member with resources, sponsor tools, and field CRM access.',
                 'status' => 'active',
                 'color' => 'slate',
-                'permissions' => [],
+                'permissions' => $defaults['member'],
                 'is_system' => true,
             ],
         ];
@@ -109,5 +84,13 @@ class RolesSeeder extends Seeder
                 $role
             );
         }
+
+        Role::query()
+            ->where('slug', 'agent')
+            ->update([
+                'slug' => 'consultant-legacy',
+                'name' => 'Agent (Legacy)',
+                'status' => 'inactive',
+            ]);
     }
 }

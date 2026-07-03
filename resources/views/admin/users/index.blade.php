@@ -31,6 +31,9 @@
                     </div>
 
                     <div class="flex flex-col gap-3 sm:flex-row">
+                        <a href="{{ route('admin.users.hierarchy') }}" class="inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-5 py-3 text-sm font-bold text-teal-800 shadow-sm transition hover:bg-teal-50">
+                            View Hierarchy
+                        </a>
                         <a href="{{ route('admin.users.create') }}" class="inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-3 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">
                             Add User
                         </a>
@@ -90,6 +93,7 @@
                     <thead class="bg-slate-50 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                         <tr>
                             <th class="px-4 py-3">User</th>
+                            <th class="px-4 py-3">Sponsor</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Joined</th>
                             <th class="px-4 py-3">Updated</th>
@@ -117,6 +121,14 @@
                                             <p class="truncate text-xs font-medium text-teal-700">{{ $user->email }}</p>
                                         </div>
                                     </div>
+                                </td>
+                                <td class="px-4 py-4 text-sm text-slate-600">
+                                    @if ($user->sponsor)
+                                        <span class="font-medium text-slate-800">{{ $user->sponsor->name }}</span>
+                                        <span class="block text-xs text-slate-400">{{ $user->sponsor->email }}</span>
+                                    @else
+                                        <span class="text-xs font-semibold uppercase tracking-wide text-teal-700">Top level</span>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-4">
                                     <span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $statusClasses[$status] }}">
@@ -151,7 +163,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-4 py-12 text-center">
+                                <td colspan="6" class="px-4 py-12 text-center">
                                     <p class="text-base font-bold text-slate-900">No users found</p>
                                     <p class="mt-1 text-sm text-slate-500">Try a different search or create a new account.</p>
                                     <a href="{{ route('admin.users.create') }}" class="mt-4 inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-2.5 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">

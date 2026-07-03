@@ -18,44 +18,36 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="min-h-screen bg-[#041f1e] font-sans text-white antialiased selection:bg-teal-300 selection:text-[#031a19]">
-        <main class="relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,#041f1e_0%,#062926_48%,#031a19_100%)]">
-            <div class="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(45,212,191,.85)_1px,transparent_1px),linear-gradient(90deg,rgba(45,212,191,.85)_1px,transparent_1px)] [background-size:42px_42px]"></div>
-            <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-300/70 to-transparent"></div>
+    <body class="min-h-screen bg-white font-sans text-slate-900 antialiased selection:bg-teal-200 selection:text-slate-900">
+        <main class="relative min-h-screen overflow-hidden bg-[#f8fbfb]">
+            <div class="absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(13,148,136,.07)_1px,transparent_1px),linear-gradient(90deg,rgba(13,148,136,.07)_1px,transparent_1px)] [background-size:42px_42px]"></div>
+            <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-300/30 to-transparent"></div>
 
             <div class="relative mx-auto flex min-h-screen max-w-5xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-                <header class="flex items-center justify-between gap-4">
-                    <a href="{{ url('/') }}" class="flex items-center gap-3 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300">
-                        <span class="flex size-11 items-center justify-center rounded-full border border-teal-300/[0.45] bg-teal-300/10 shadow-[0_0_24px_rgba(45,212,191,0.18)]">
-                            <span class="font-mono text-base font-bold tracking-tight text-teal-200">H2</span>
-                        </span>
-                        <span>
-                            <span class="block text-sm font-semibold tracking-wide text-white">Molecular H2 Water</span>
-                            <span class="block text-xs font-semibold uppercase tracking-[0.22em] text-teal-200/70">Shared Resource</span>
-                        </span>
-                    </a>
+                <header class="flex items-center justify-between gap-4 rounded-lg border border-teal-100 bg-white px-5 py-4 shadow-sm">
+                    <x-brand.mark :href="url('/')" portal-label="Shared Resource" size="md" :navigate="false" />
 
                     @auth
-                        <a href="{{ route('resources') }}" class="inline-flex items-center justify-center rounded-md border border-teal-200/25 bg-white/[0.08] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/[0.12]">
+                        <a href="{{ route('resources') }}" class="inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:border-teal-300 hover:bg-teal-50">
                             Resources
                         </a>
                     @else
-                        <a href="{{ route('login') }}" class="inline-flex items-center justify-center rounded-md border border-teal-200/25 bg-white/[0.08] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/[0.12]">
+                        <a href="{{ route('login') }}" class="inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:border-teal-300 hover:bg-teal-50">
                             Login
                         </a>
                     @endauth
                 </header>
 
                 <section class="flex flex-1 items-center py-10">
-                    <article class="w-full overflow-hidden rounded-lg border border-teal-200/[0.18] bg-white/[0.94] text-slate-900 shadow-2xl shadow-teal-950/25">
+                    <article class="w-full overflow-hidden rounded-lg border border-teal-100 bg-white text-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
                         <div class="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
-                            <aside class="bg-[#041f1e] p-6 text-white sm:p-8">
-                                <p class="inline-flex items-center gap-2 rounded-full border border-teal-300/25 bg-white/[0.07] px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-teal-100">
-                                    <span class="size-2 rounded-full bg-teal-300 shadow-[0_0_14px_rgba(45,212,191,0.9)]"></span>
+                            <aside class="border-b border-slate-100 bg-[#f8fbfb] p-6 text-slate-900 sm:border-b-0 sm:border-r sm:p-8">
+                                <p class="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-teal-800">
+                                    <span class="size-2 rounded-full bg-teal-500 shadow-[0_0_10px_rgba(13,148,136,0.35)]"></span>
                                     {{ $categoryLabel }}
                                 </p>
 
-                                <div class="mt-10 flex aspect-square max-w-64 items-center justify-center rounded-lg border border-teal-200/20 bg-white/[0.06] text-teal-200">
+                                <div class="mt-10 flex aspect-square max-w-64 items-center justify-center rounded-lg border border-teal-100 bg-white text-teal-700">
                                     @if ($resource->isPdf())
                                         <svg class="size-20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/>
@@ -74,7 +66,7 @@
                                     @endif
                                 </div>
 
-                                <p class="mt-8 text-sm leading-6 text-teal-50/65">
+                                <p class="mt-8 text-sm leading-6 text-slate-600">
                                     This public link can be opened without creating an account.
                                 </p>
                             </aside>

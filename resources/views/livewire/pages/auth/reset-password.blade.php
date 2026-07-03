@@ -10,7 +10,11 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
 
-new #[Layout('layouts.guest')] class extends Component
+new #[Layout('layouts.auth-split', [
+    'badge' => 'Secure Reset',
+    'heading' => 'Choose a new password.',
+    'subtext' => 'Use the link from your email to set a fresh password and regain access to your portal.',
+])] class extends Component
 {
     #[Locked]
     public string $token = '';
@@ -76,33 +80,38 @@ new #[Layout('layouts.guest')] class extends Component
         <p class="mt-2 text-sm leading-6 text-slate-500">Enter your email and a new password for your admin account.</p>
     </div>
 
-    <form wire:submit="resetPassword">
-        <!-- Email Address -->
+    <form class="flex flex-col gap-4" wire:submit="resetPassword">
         <div>
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autofocus autocomplete="username" />
+            <x-text-input wire:model="email" id="email" class="mt-1 block w-full py-2.5" type="email" name="email" required autofocus autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
-        <!-- Password -->
-        <div class="mt-4">
+        <div>
             <x-input-label for="password" :value="__('Password')" />
-            <x-text-input wire:model="password" id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
+            <x-text-input wire:model="password" id="password" class="mt-1 block w-full py-2.5" type="password" name="password" required autocomplete="new-password" />
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
-        <!-- Confirm Password -->
-        <div class="mt-4">
+        <div>
             <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
-
-            <x-text-input wire:model="password_confirmation" id="password_confirmation" class="block mt-1 w-full"
-                          type="password"
-                          name="password_confirmation" required autocomplete="new-password" />
-
+            <x-text-input
+                wire:model="password_confirmation"
+                id="password_confirmation"
+                class="mt-1 block w-full py-2.5"
+                type="password"
+                name="password_confirmation"
+                required
+                autocomplete="new-password"
+            />
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-end mt-4">
+        <div class="mt-2 flex items-center justify-between gap-4">
+            <a class="text-sm font-medium text-teal-700 underline decoration-teal-300 underline-offset-4 transition hover:text-teal-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2" href="{{ route('login') }}" wire:navigate>
+                {{ __('Back to login') }}
+            </a>
+
             <x-primary-button>
                 {{ __('Reset Password') }}
             </x-primary-button>

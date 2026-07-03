@@ -5,7 +5,11 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('layouts.guest')] class extends Component
+new #[Layout('layouts.auth-split', [
+    'badge' => 'Protected Area',
+    'heading' => 'Confirm it is really you.',
+    'subtext' => 'For your security, re-enter your password before continuing to sensitive settings.',
+])] class extends Component
 {
     public string $password = '';
 
@@ -37,28 +41,27 @@ new #[Layout('layouts.guest')] class extends Component
     <div class="mb-6">
         <p class="text-xs font-bold uppercase tracking-[0.22em] text-teal-700">Protected Area</p>
         <h1 class="mt-2 text-2xl font-black tracking-normal text-slate-950">Confirm your password</h1>
+        <p class="mt-2 text-sm leading-6 text-slate-500">
+            {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
+        </p>
     </div>
 
-    <div class="mb-4 text-sm leading-6 text-slate-600">
-        {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
-    </div>
-
-    <form wire:submit="confirmPassword">
-        <!-- Password -->
+    <form class="flex flex-col gap-4" wire:submit="confirmPassword">
         <div>
             <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input wire:model="password"
-                          id="password"
-                          class="block mt-1 w-full"
-                          type="password"
-                          name="password"
-                          required autocomplete="current-password" />
-
+            <x-text-input
+                wire:model="password"
+                id="password"
+                class="mt-1 block w-full py-2.5"
+                type="password"
+                name="password"
+                required
+                autocomplete="current-password"
+            />
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
-        <div class="flex justify-end mt-4">
+        <div class="mt-2 flex justify-end">
             <x-primary-button>
                 {{ __('Confirm') }}
             </x-primary-button>

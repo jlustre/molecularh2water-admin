@@ -21,8 +21,13 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolesSeeder::class,
             MediaItemsSeeder::class,
-            // RolePermissionSeeder::class,
-            // SuperAdminSeeder::class,
+            CrmSeeder::class,
+            CalendarSeeder::class,
+            CrmUsersSeeder::class,
+            CrmMarketingSeeder::class,
+            CrmDemoSeeder::class,
+            ProspectsSeeder::class,
+            CrmPremiumDemoSeeder::class,
         ]);
 
         $user = User::query()->updateOrCreate(

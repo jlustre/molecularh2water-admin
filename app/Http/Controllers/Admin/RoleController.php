@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Role;
+use App\Support\Crm\CrmPermissions;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,51 +29,10 @@ class RoleController extends Controller
         'slate' => 'Slate',
     ];
 
-    private const PERMISSIONS = [
-        'dashboard' => [
-            'label' => 'Dashboard',
-            'items' => [
-                'admin.dashboard.view' => 'View admin dashboard',
-            ],
-        ],
-        'media' => [
-            'label' => 'Media Library',
-            'items' => [
-                'media.view' => 'View media',
-                'media.create' => 'Create media',
-                'media.update' => 'Update media',
-                'media.delete' => 'Delete media',
-                'media.export' => 'Update media seeder',
-            ],
-        ],
-        'users' => [
-            'label' => 'Users',
-            'items' => [
-                'users.view' => 'View users',
-                'users.create' => 'Create users',
-                'users.update' => 'Update users',
-                'users.delete' => 'Delete users',
-            ],
-        ],
-        'content' => [
-            'label' => 'Content',
-            'items' => [
-                'pages.manage' => 'Manage pages',
-                'blog.manage' => 'Manage blog',
-                'faqs.manage' => 'Manage FAQs',
-                'testimonials.manage' => 'Manage testimonials',
-            ],
-        ],
-        'operations' => [
-            'label' => 'Operations',
-            'items' => [
-                'leads.manage' => 'Manage leads',
-                'appointments.manage' => 'Manage appointments',
-                'messages.manage' => 'Manage contact messages',
-                'settings.manage' => 'Manage settings',
-            ],
-        ],
-    ];
+    private function permissionGroups(): array
+    {
+        return CrmPermissions::groups();
+    }
 
     public function index(Request $request): View
     {
@@ -105,7 +65,7 @@ class RoleController extends Controller
         return view('admin.roles.index', [
             'roles' => $query->paginate((int) $request->integer('per_page', 10))->withQueryString(),
             'statuses' => self::STATUSES,
-            'permissions' => self::PERMISSIONS,
+            'permissions' => $this->permissionGroups(),
             'totalRoles' => Role::query()->count(),
             'activeRoles' => Role::query()->where('status', 'active')->count(),
             'assignedRoles' => Role::query()->has('users')->count(),
@@ -179,7 +139,7 @@ class RoleController extends Controller
             'role' => $role,
             'statuses' => self::STATUSES,
             'colors' => self::COLORS,
-            'permissions' => self::PERMISSIONS,
+            'permissions' => $this->permissionGroups(),
             'users' => User::query()->orderBy('name')->get(['id', 'name', 'email']),
         ];
     }
@@ -207,7 +167,7 @@ class RoleController extends Controller
      */
     private function permissionKeys(): array
     {
-        return collect(self::PERMISSIONS)
+        return collect($this->permissionGroups())
             ->flatMap(fn (array $group) => array_keys($group['items']))
             ->values()
             ->all();

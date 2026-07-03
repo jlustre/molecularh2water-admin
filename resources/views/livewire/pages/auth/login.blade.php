@@ -5,7 +5,11 @@ use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('layouts.guest')] class extends Component
+new #[Layout('layouts.auth-split', [
+    'badge' => 'Secure Access',
+    'heading' => 'One calm control point for your admin work.',
+    'subtext' => 'Sign in to manage leads, appointments, content, customer messages, and system settings in the same teal operations environment.',
+])] class extends Component
 {
     public LoginForm $form;
 
@@ -34,52 +38,57 @@ new #[Layout('layouts.guest')] class extends Component
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
-    <form wire:submit="login">
-        <!-- Email Address -->
+    <form class="flex flex-col gap-4" wire:submit="login">
         <div>
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="form.email" id="email" class="block mt-1 w-full" type="email" name="email" required autofocus autocomplete="username" />
+            <x-text-input wire:model="form.email" id="email" class="mt-1 block w-full py-2.5" type="email" name="email" required autofocus autocomplete="username" />
             <x-input-error :messages="$errors->get('form.email')" class="mt-2" />
         </div>
 
-        <!-- Password -->
-        <div class="mt-4">
+        <div>
             <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input wire:model="form.password" id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
+            <x-text-input
+                wire:model="form.password"
+                id="password"
+                class="mt-1 block w-full py-2.5"
+                type="password"
+                name="password"
+                required
+                autocomplete="current-password"
+            />
             <x-input-error :messages="$errors->get('form.password')" class="mt-2" />
         </div>
 
-        <!-- Remember Me -->
-        <div class="block mt-4">
+        <div class="flex items-center justify-between gap-4">
             <label for="remember" class="inline-flex items-center">
                 <input wire:model="form.remember" id="remember" type="checkbox" class="rounded border-teal-200 text-teal-600 shadow-sm focus:ring-teal-500" name="remember">
                 <span class="ms-2 text-sm text-slate-600">{{ __('Remember me') }}</span>
             </label>
-        </div>
 
-        <div class="flex items-center justify-end mt-4">
             @if (Route::has('password.request'))
-                <a class="rounded-md text-sm font-medium text-teal-700 underline decoration-teal-300 underline-offset-4 transition hover:text-teal-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2" href="{{ route('password.request') }}" wire:navigate>
+                <a class="text-sm font-medium text-teal-700 underline decoration-teal-300 underline-offset-4 transition hover:text-teal-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2" href="{{ route('password.request') }}" wire:navigate>
                     {{ __('Forgot your password?') }}
                 </a>
             @endif
+        </div>
 
-            <x-primary-button class="ms-3">
+        <div class="mt-2 flex justify-end">
+            <x-primary-button>
                 {{ __('Log in') }}
             </x-primary-button>
         </div>
 
         @if (Route::has('register'))
-            <p class="mt-6 text-center text-sm text-slate-500">
-                {{ __('Need an admin account?') }}
-                <a class="font-semibold text-teal-700 underline decoration-teal-300 underline-offset-4 transition hover:text-teal-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2" href="{{ route('register') }}" wire:navigate>
-                    {{ __('Register') }}
-                </a>
+            <p class="mt-2 text-center text-sm text-slate-500">
+                @if (config('registration.invite_only'))
+                    {{ __('Registration is invite-only.') }}
+                    <span class="block mt-1">Use the one-time link or code from your sponsor.</span>
+                @else
+                    {{ __('Need an account?') }}
+                    <a class="font-semibold text-teal-700 underline decoration-teal-300 underline-offset-4 transition hover:text-teal-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2" href="{{ route('register') }}" wire:navigate>
+                        {{ __('Register') }}
+                    </a>
+                @endif
             </p>
         @endif
     </form>

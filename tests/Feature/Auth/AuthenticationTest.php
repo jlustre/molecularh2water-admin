@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\RolesSeeder;
 use Livewire\Volt\Volt;
 
 test('login screen can be rendered', function () {
@@ -44,7 +46,10 @@ test('users can not authenticate with invalid password', function () {
 });
 
 test('dashboard navigation can be rendered', function () {
+    $this->seed(RolesSeeder::class);
+
     $user = User::factory()->create();
+    $user->roles()->attach(Role::query()->where('slug', 'member')->firstOrFail());
 
     $this->actingAs($user);
 
@@ -52,11 +57,9 @@ test('dashboard navigation can be rendered', function () {
 
     $response
         ->assertOk()
-        ->assertSee('Client Portal')
+        ->assertSee('Associate Portal')
         ->assertSee('Welcome back, '.$user->name)
-        ->assertSee('Profile')
-        ->assertSee('Settings')
-        ->assertSee('Log off');
+        ->assertSee('My Profile');
 });
 
 test('users can logout', function () {

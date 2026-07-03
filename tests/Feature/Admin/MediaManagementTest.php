@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 it('allows an admin to manage media items', function () {
     Storage::fake('public');
 
-    $user = User::factory()->create();
+    $user = superAdminUser();
 
     $this->actingAs($user)
         ->get(route('admin.media.index'))
@@ -116,7 +116,7 @@ it('allows an admin to manage media items', function () {
 });
 
 it('shows a link-only form from the add video link action', function () {
-    $user = User::factory()->create();
+    $user = superAdminUser();
 
     $this->actingAs($user)
         ->get(route('admin.media.create', ['category' => 'videos', 'mode' => 'video-link']))
@@ -130,7 +130,7 @@ it('shows a link-only form from the add video link action', function () {
 });
 
 it('shows a link-only form from the add media link action', function () {
-    $user = User::factory()->create();
+    $user = superAdminUser();
 
     $this->actingAs($user)
         ->get(route('admin.media.create', ['category' => 'links', 'mode' => 'media-link']))
@@ -147,7 +147,7 @@ it('shows a link-only form from the add media link action', function () {
 it('stores a thumbnail when creating a media link', function () {
     Storage::fake('public');
 
-    $user = User::factory()->create();
+    $user = superAdminUser();
 
     $this->actingAs($user)
         ->post(route('admin.media.store'), [
@@ -170,7 +170,7 @@ it('stores a thumbnail when creating a media link', function () {
 });
 
 it('exports current media records into a media items seeder', function () {
-    $user = User::factory()->create();
+    $user = superAdminUser();
 
     $mediaItem = MediaItem::create([
         'title' => 'Seeded Hydrogen Guide',

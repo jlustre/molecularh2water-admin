@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\LeadCaptureController;
+use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\MediaResourceController;
+use App\Http\Controllers\Api\ProspectController;
 use App\Http\Controllers\Api\WarrantyRegistrationController;
 use Illuminate\Support\Facades\Route;
 
@@ -22,3 +25,21 @@ Route::get('/warranty-registrations/check-serial', [WarrantyRegistrationControll
 Route::post('/warranty-registrations', [WarrantyRegistrationController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('api.warranty-registrations.store');
+
+Route::post('/prospects', [ProspectController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('api.prospects.store');
+
+Route::prefix('crm')->name('api.crm.')->group(function () {
+    Route::get('/landing-pages/{slug}', [LandingPageController::class, 'show'])
+        ->middleware('throttle:60,1')
+        ->name('landing-pages.show');
+
+    Route::get('/leads/check-email', [LeadCaptureController::class, 'checkEmail'])
+        ->middleware('throttle:30,1')
+        ->name('leads.check-email');
+
+    Route::post('/leads', [LeadCaptureController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('leads.store');
+});

@@ -38,7 +38,9 @@ new class extends Component
     }
 }; ?>
 
-<section>
+<section class="relative" data-portal-profile-form-scope>
+    <x-portal.page-loading-overlay scope="data-portal-profile-form-scope" message="Updating password..." />
+
     <header>
         <p class="text-xs font-bold uppercase tracking-[0.2em] text-teal-700">
             {{ __('Security') }}

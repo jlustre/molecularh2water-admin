@@ -1,5 +1,8 @@
 <?php
 
+use App\Livewire\Portal\MemberHierarchy;
+use App\Livewire\Portal\RegistrationInvites;
+use App\Livewire\Portal\Dashboard as PortalDashboard;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Admin\Dashboard;
 use App\Http\Controllers\Admin\MediaController;
@@ -10,13 +13,21 @@ use App\Http\Controllers\ResourcesController;
 
 Route::view('/', 'welcome');
 
-Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
+Route::get('dashboard', PortalDashboard::class)
+    ->middleware(['auth'])
     ->name('dashboard');
 
 Route::get('resources', [ResourcesController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('resources');
+
+Route::middleware(['auth', 'verified', 'permission:invites.manage'])
+    ->get('invites', RegistrationInvites::class)
+    ->name('portal.invites');
+
+Route::middleware(['auth', 'verified', 'permission:sponsors.view-tree'])
+    ->get('team', MemberHierarchy::class)
+    ->name('portal.team');
 
 Route::get('media/{mediaItem}/open', [ResourcesController::class, 'open'])
     ->name('media.open');
@@ -27,20 +38,41 @@ Route::get('media/{mediaItem}/thumbnail', [ResourcesController::class, 'thumbnai
 Route::get('media/{mediaItem}', [ResourcesController::class, 'show'])
     ->name('media.show');
 
-Route::view('profile', 'profile')
+Route::view('profile', 'profile', ['header' => 'Profile', 'title' => 'Profile'])
     ->middleware(['auth'])
     ->name('profile');
 
 require __DIR__.'/auth.php';
 
+Route::middleware(['auth', 'verified'])
+    ->prefix('crm')
+    ->name('portal.crm.')
+    ->group(function () {
+        require base_path('routes/crm.php');
+    });
+
 // Admin routes
-Route::middleware(['auth'])
+Route::middleware(['auth', 'admin.access'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
         Route::get('/dashboard', Dashboard::class)->name('dashboard');
-        // Placeholder routes for sidebar navigation
-        Route::view('/leads', 'admin.placeholders.leads')->name('leads');
+
+        Route::prefix('crm')
+            ->name('crm.')
+            ->group(function () {
+                require base_path('routes/crm.php');
+            });
+
+        // Legacy placeholder — redirects to CRM leads when permitted
+        Route::get('/leads', function () {
+            if (auth()->user()?->hasPermission('leads.view')) {
+                return redirect()->route('admin.crm.leads.index');
+            }
+
+            return view('admin.placeholders.leads');
+        })->name('leads');
+
         Route::view('/faqs', 'admin.placeholders.faqs')->name('faqs');
         Route::view('/testimonials', 'admin.placeholders.testimonials')->name('testimonials');
         Route::view('/blog', 'admin.placeholders.blog')->name('blog');
@@ -58,9 +90,16 @@ Route::middleware(['auth'])
             return redirect()->route('admin.settings');
         })->name('settings.sidebar-design');
             Route::view('/contact-messages', 'admin.placeholders.contact-messages')->name('contact-messages');
-            Route::view('/appointments', 'admin.placeholders.appointments')->name('appointments');
+            Route::get('/appointments', function () {
+                if (auth()->user()?->hasPermission('appointments.view')) {
+                    return redirect()->route('admin.crm.appointments.index');
+                }
+
+                return view('admin.placeholders.appointments');
+            })->name('appointments');
         Route::resource('/warranty-registrations', WarrantyRegistrationController::class)
             ->except(['create', 'store']);
         Route::resource('/users', UserController::class)->except('show');
+        Route::get('/users-hierarchy', [UserController::class, 'hierarchy'])->name('users.hierarchy');
         Route::resource('/roles', RoleController::class)->except('show');
     });

@@ -43,6 +43,8 @@ class ResourcesController extends Controller
         }
 
         return view('resources.index', [
+            'header' => 'Resources',
+            'title' => 'Resources',
             'categories' => self::CATEGORIES,
             'resources' => $query->paginate(12)->withQueryString(),
             'categoryCounts' => MediaItem::query()

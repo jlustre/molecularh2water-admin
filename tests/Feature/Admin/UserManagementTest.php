@@ -4,7 +4,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 it('allows an admin to manage users', function () {
-    $admin = User::factory()->create(['name' => 'Admin User']);
+    $admin = superAdminUser(['name' => 'Admin User']);
     $existingUser = User::factory()->create([
         'name' => 'Taylor Verified',
         'email' => 'taylor@example.com',
@@ -36,6 +36,7 @@ it('allows an admin to manage users', function () {
             'password' => 'password',
             'password_confirmation' => 'password',
             'email_status' => 'verified',
+            'sponsor_id' => $admin->id,
         ])
         ->assertRedirect(route('admin.users.index'));
 
@@ -58,6 +59,7 @@ it('allows an admin to manage users', function () {
             'password' => 'new-password',
             'password_confirmation' => 'new-password',
             'email_status' => 'unverified',
+            'sponsor_id' => $admin->id,
         ])
         ->assertRedirect(route('admin.users.index'));
 
@@ -78,7 +80,7 @@ it('allows an admin to manage users', function () {
 });
 
 it('prevents an admin from deleting their own account', function () {
-    $admin = User::factory()->create();
+    $admin = superAdminUser();
 
     $this->actingAs($admin)
         ->delete(route('admin.users.destroy', $admin))

@@ -13,7 +13,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'admin.access' => \App\Http\Middleware\EnsureAdminAccess::class,
+            'permission' => \App\Http\Middleware\EnsurePermission::class,
+            'permission.any' => \App\Http\Middleware\EnsureAnyPermission::class,
+            'verification.signature' => \App\Http\Middleware\ValidateEmailVerificationSignature::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

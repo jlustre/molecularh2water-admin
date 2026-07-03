@@ -25,7 +25,9 @@ new class extends Component
     }
 }; ?>
 
-<section class="space-y-6">
+<section class="relative space-y-6" data-portal-profile-form-scope>
+    <x-portal.page-loading-overlay scope="data-portal-profile-form-scope" message="Deleting account..." :fullscreen="true" />
+
     <header>
         <p class="text-xs font-bold uppercase tracking-[0.2em] text-red-600">
             {{ __('Danger Zone') }}

@@ -95,7 +95,9 @@ new class extends Component
     }
 }; ?>
 
-<section>
+<section class="relative" data-portal-profile-form-scope>
+    <x-portal.page-loading-overlay scope="data-portal-profile-form-scope" message="Saving profile..." />
+
     <header>
         <p class="text-xs font-bold uppercase tracking-[0.2em] text-teal-700">
             {{ __('Identity') }}
@@ -167,7 +169,7 @@ new class extends Component
             <x-text-input wire:model="email" id="email" name="email" type="email" class="mt-2 block w-full border-teal-100 focus:border-teal-600 focus:ring-teal-600" required autocomplete="username" />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
-            @if (auth()->user() instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! auth()->user()->hasVerifiedEmail())
+            @if (! auth()->user()->hasVerifiedEmail())
                 <div class="mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
                     <p class="text-sm leading-6 text-amber-900">
                         {{ __('Your email address is unverified.') }}

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\BusinessLine;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\SponsorHierarchyService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -12,9 +14,13 @@ use Illuminate\View\View;
 
 class UserController extends Controller
 {
+    public function __construct(
+        private readonly SponsorHierarchyService $sponsors,
+    ) {}
+
     public function index(Request $request): View
     {
-        $query = User::query()->latest();
+        $query = User::query()->with('sponsor:id,name,email')->latest();
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
@@ -55,26 +61,49 @@ class UserController extends Controller
         ]);
     }
 
+    public function hierarchy(): View
+    {
+        return view('admin.users.hierarchy', [
+            'forest' => $this->sponsors->forestForAdmin(),
+        ]);
+    }
+
     public function create(): View
     {
         return view('admin.users.create', [
             'user' => new User(['email_verified_at' => now()]),
+            'sponsorOptions' => $this->sponsors->eligibleSponsors(),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $isSuperAdmin = $request->boolean('is_super_admin');
+
         $attributes = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'email_status' => ['required', 'in:verified,unverified'],
+            'sponsor_id' => [
+                Rule::requiredIf(! $isSuperAdmin),
+                'nullable',
+                'integer',
+                'exists:users,id',
+            ],
+            'is_super_admin' => ['sometimes', 'boolean'],
+            'business_lines' => ['nullable', 'array'],
+            'business_lines.*' => [Rule::in(BusinessLine::values())],
         ]);
+
+        $this->sponsors->assertValidSponsor(null, $isSuperAdmin ? null : ($attributes['sponsor_id'] ?? null), $isSuperAdmin);
 
         $user = User::create([
             'name' => $attributes['name'],
             'email' => $attributes['email'],
             'password' => $attributes['password'],
+            'sponsor_id' => $isSuperAdmin ? null : $attributes['sponsor_id'],
+            'business_lines' => $this->normalizeBusinessLines($attributes['business_lines'] ?? [], $isSuperAdmin),
         ]);
 
         $user->forceFill([
@@ -89,7 +118,8 @@ class UserController extends Controller
     public function edit(User $user): View
     {
         return view('admin.users.edit', [
-            'user' => $user,
+            'user' => $user->load('sponsor:id,name'),
+            'sponsorOptions' => $this->sponsors->eligibleSponsors($user),
         ]);
     }
 
@@ -100,7 +130,18 @@ class UserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
             'password' => ['nullable', 'confirmed', Password::defaults()],
             'email_status' => ['required', 'in:verified,unverified'],
+            'sponsor_id' => [
+                Rule::requiredIf($user->requiresSponsor()),
+                'nullable',
+                'integer',
+                'exists:users,id',
+            ],
+            'business_lines' => ['nullable', 'array'],
+            'business_lines.*' => [Rule::in(BusinessLine::values())],
         ]);
+
+        $isSuperAdmin = $user->isSuperAdmin();
+        $this->sponsors->assertValidSponsor($user, $isSuperAdmin ? null : $attributes['sponsor_id'], $isSuperAdmin);
 
         $user->forceFill([
             'name' => $attributes['name'],
@@ -108,6 +149,8 @@ class UserController extends Controller
             'email_verified_at' => $attributes['email_status'] === 'verified'
                 ? ($user->email_verified_at ?? now())
                 : null,
+            'sponsor_id' => $isSuperAdmin ? null : $attributes['sponsor_id'],
+            'business_lines' => $this->normalizeBusinessLines($attributes['business_lines'] ?? [], $isSuperAdmin),
         ]);
 
         if (! empty($attributes['password'])) {
@@ -134,5 +177,25 @@ class UserController extends Controller
         return redirect()
             ->route('admin.users.index')
             ->with('status', 'User deleted.');
+    }
+
+    /**
+     * @param  list<string>  $lines
+     * @return list<string>
+     */
+    private function normalizeBusinessLines(array $lines, bool $isSuperAdmin): array
+    {
+        $lines = collect($lines)
+            ->filter()
+            ->map(fn ($line) => (string) $line)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($isSuperAdmin) {
+            return BusinessLine::values();
+        }
+
+        return $lines !== [] ? $lines : [BusinessLine::H2s->value];
     }
 }

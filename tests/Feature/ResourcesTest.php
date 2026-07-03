@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\MediaItem;
+use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\RolesSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -39,7 +41,10 @@ it('shows published admin media to authenticated users as read-only resources', 
 });
 
 it('links to resources from the user dashboard', function () {
+    $this->seed(RolesSeeder::class);
+
     $user = User::factory()->create();
+    $user->roles()->attach(Role::query()->where('slug', 'member')->firstOrFail());
 
     $this->actingAs($user)
         ->get(route('dashboard'))

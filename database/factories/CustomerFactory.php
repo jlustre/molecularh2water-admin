@@ -1,0 +1,57 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Enums\Crm\LeadStatus;
+use App\Enums\Crm\LeadTemperature;
+use App\Models\Crm\Customer;
+use App\Models\Crm\FunnelStage;
+use App\Models\Crm\LeadSource;
+use App\Models\Crm\Lifecycle;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<Customer>
+ */
+class CustomerFactory extends Factory
+{
+    protected $model = Customer::class;
+
+    public function definition(): array
+    {
+        return [
+            'lifecycle_id' => Lifecycle::idFor('client'),
+            'business_line' => 'h2s',
+            'status' => LeadStatus::Customer,
+            'temperature' => LeadTemperature::Cold,
+            'score' => fake()->numberBetween(0, 100),
+            'first_name' => fake()->firstName(),
+            'last_name' => fake()->lastName(),
+            'email' => fake()->unique()->safeEmail(),
+            'phone' => fake()->phoneNumber(),
+            'city' => fake()->city(),
+            'state' => fake()->stateAbbr(),
+            'country' => 'US',
+            'consent_given' => true,
+        ];
+    }
+
+    public function assignedTo(User $user): static
+    {
+        return $this->state(fn () => ['assigned_user_id' => $user->id]);
+    }
+
+    public function inStage(FunnelStage $stage): static
+    {
+        return $this->state(fn () => [
+            'funnel_id' => $stage->funnel_id,
+            'funnel_stage_id' => $stage->id,
+        ]);
+    }
+
+    public function fromSource(LeadSource $source): static
+    {
+        return $this->state(fn () => ['lead_source_id' => $source->id]);
+    }
+}
