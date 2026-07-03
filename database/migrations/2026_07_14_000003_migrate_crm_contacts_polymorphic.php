@@ -1,11 +1,7 @@
 <?php
 
 use App\Enums\Crm\LeadLifecycle;
-use App\Models\Crm\Customer;
-use App\Models\Crm\Lead;
 use App\Models\Crm\Lifecycle;
-use App\Models\Crm\Prospect;
-use App\Models\Crm\Recruit;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +13,8 @@ use Illuminate\Support\Facades\Schema;
  * - Replaces lead_id FKs with polymorphic contact_type/contact_id on child tables.
  * - Renames lead_tag/lead_user pivots to crm_contact_tag/crm_contact_user.
  * - Referrals use polymorphic referrer/referred contacts.
+ *
+ * Safe to re-run on partial production schemas (missing FKs, indexes, or columns).
  */
 return new class extends Migration
 {
@@ -69,22 +67,42 @@ return new class extends Migration
      */
     private function addLifecycleIdToLeads(array $lifecycleIds): void
     {
-        Schema::table('leads', function (Blueprint $table) {
-            $table->foreignId('lifecycle_id')->nullable()->after('business_line')->constrained('lifecycles')->restrictOnDelete();
-            $table->nullableMorphs('referred_by');
-        });
+        if (! Schema::hasTable('leads')) {
+            return;
+        }
 
-        foreach (DB::table('leads')->select('id', 'lifecycle', 'referred_by_lead_id')->get() as $lead) {
+        if (! Schema::hasColumn('leads', 'lifecycle_id')) {
+            Schema::table('leads', function (Blueprint $table) {
+                $table->foreignId('lifecycle_id')->nullable()->after('business_line')->constrained('lifecycles')->restrictOnDelete();
+            });
+        }
+
+        if (! Schema::hasColumn('leads', 'referred_by_type')) {
+            Schema::table('leads', function (Blueprint $table) {
+                $table->nullableMorphs('referred_by');
+            });
+        }
+
+        if (! Schema::hasColumn('leads', 'lifecycle')) {
+            return;
+        }
+
+        $select = ['id', 'lifecycle'];
+        if (Schema::hasColumn('leads', 'referred_by_lead_id')) {
+            $select[] = 'referred_by_lead_id';
+        }
+
+        foreach (DB::table('leads')->select($select)->get() as $lead) {
             DB::table('leads')->where('id', $lead->id)->update([
                 'lifecycle_id' => $lifecycleIds[$lead->lifecycle] ?? $lifecycleIds['lead'],
             ]);
 
-            if ($lead->referred_by_lead_id) {
+            if (! empty($lead->referred_by_lead_id)) {
                 $referrer = DB::table('leads')->find($lead->referred_by_lead_id);
 
                 if ($referrer) {
                     DB::table('leads')->where('id', $lead->id)->update([
-                        'referred_by_type' => $this->morphTypeForLifecycle($referrer->lifecycle),
+                        'referred_by_type' => $this->morphTypeForLifecycle($referrer->lifecycle ?? 'lead'),
                         'referred_by_id' => $referrer->id,
                     ]);
                 }
@@ -99,6 +117,10 @@ return new class extends Migration
                 continue;
             }
 
+            if (Schema::hasColumn($tableName, 'contact_type')) {
+                continue;
+            }
+
             Schema::table($tableName, function (Blueprint $table) {
                 $table->nullableMorphs('contact');
             });
@@ -107,10 +129,20 @@ return new class extends Migration
 
     private function migrateChildLeadIds(): void
     {
-        $leadLifecycles = DB::table('leads')->pluck('lifecycle', 'id');
+        if (! Schema::hasTable('leads')) {
+            return;
+        }
+
+        $leadLifecycles = Schema::hasColumn('leads', 'lifecycle')
+            ? DB::table('leads')->pluck('lifecycle', 'id')
+            : collect();
 
         foreach ($this->childTables as $tableName) {
-            if (! Schema::hasTable($tableName) || ! Schema::hasColumn($tableName, 'lead_id')) {
+            if (
+                ! Schema::hasTable($tableName)
+                || ! Schema::hasColumn($tableName, 'lead_id')
+                || ! Schema::hasColumn($tableName, 'contact_type')
+            ) {
                 continue;
             }
 
@@ -127,59 +159,61 @@ return new class extends Migration
 
     private function migratePivotTables(): void
     {
-        if (! Schema::hasTable('lead_tag')) {
-            return;
+        $leadLifecycles = Schema::hasTable('leads') && Schema::hasColumn('leads', 'lifecycle')
+            ? DB::table('leads')->pluck('lifecycle', 'id')
+            : collect();
+
+        if (Schema::hasTable('lead_tag') && ! Schema::hasTable('crm_contact_tag')) {
+            Schema::create('crm_contact_tag', function (Blueprint $table) {
+                $table->id();
+                $table->morphs('contact');
+                $table->foreignId('tag_id')->constrained()->cascadeOnDelete();
+                $table->timestamps();
+                $table->unique(['contact_type', 'contact_id', 'tag_id']);
+            });
+
+            foreach (DB::table('lead_tag')->get() as $row) {
+                $lifecycle = $leadLifecycles[$row->lead_id] ?? 'lead';
+
+                DB::table('crm_contact_tag')->insert([
+                    'contact_type' => $this->morphTypeForLifecycle($lifecycle),
+                    'contact_id' => $row->lead_id,
+                    'tag_id' => $row->tag_id,
+                    'created_at' => $row->created_at,
+                    'updated_at' => $row->updated_at,
+                ]);
+            }
         }
 
-        Schema::create('crm_contact_tag', function (Blueprint $table) {
-            $table->id();
-            $table->morphs('contact');
-            $table->foreignId('tag_id')->constrained()->cascadeOnDelete();
-            $table->timestamps();
-            $table->unique(['contact_type', 'contact_id', 'tag_id']);
-        });
-
-        $leadLifecycles = DB::table('leads')->pluck('lifecycle', 'id');
-
-        foreach (DB::table('lead_tag')->get() as $row) {
-            $lifecycle = $leadLifecycles[$row->lead_id] ?? 'lead';
-
-            DB::table('crm_contact_tag')->insert([
-                'contact_type' => $this->morphTypeForLifecycle($lifecycle),
-                'contact_id' => $row->lead_id,
-                'tag_id' => $row->tag_id,
-                'created_at' => $row->created_at,
-                'updated_at' => $row->updated_at,
-            ]);
+        if (Schema::hasTable('lead_tag')) {
+            Schema::drop('lead_tag');
         }
 
-        Schema::drop('lead_tag');
+        if (Schema::hasTable('lead_user') && ! Schema::hasTable('crm_contact_user')) {
+            Schema::create('crm_contact_user', function (Blueprint $table) {
+                $table->id();
+                $table->morphs('contact');
+                $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+                $table->timestamps();
+                $table->unique(['contact_type', 'contact_id', 'user_id']);
+            });
 
-        if (! Schema::hasTable('lead_user')) {
-            return;
+            foreach (DB::table('lead_user')->get() as $row) {
+                $lifecycle = $leadLifecycles[$row->lead_id] ?? 'lead';
+
+                DB::table('crm_contact_user')->insert([
+                    'contact_type' => $this->morphTypeForLifecycle($lifecycle),
+                    'contact_id' => $row->lead_id,
+                    'user_id' => $row->user_id,
+                    'created_at' => $row->created_at,
+                    'updated_at' => $row->updated_at,
+                ]);
+            }
         }
 
-        Schema::create('crm_contact_user', function (Blueprint $table) {
-            $table->id();
-            $table->morphs('contact');
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->timestamps();
-            $table->unique(['contact_type', 'contact_id', 'user_id']);
-        });
-
-        foreach (DB::table('lead_user')->get() as $row) {
-            $lifecycle = $leadLifecycles[$row->lead_id] ?? 'lead';
-
-            DB::table('crm_contact_user')->insert([
-                'contact_type' => $this->morphTypeForLifecycle($lifecycle),
-                'contact_id' => $row->lead_id,
-                'user_id' => $row->user_id,
-                'created_at' => $row->created_at,
-                'updated_at' => $row->updated_at,
-            ]);
+        if (Schema::hasTable('lead_user')) {
+            Schema::drop('lead_user');
         }
-
-        Schema::drop('lead_user');
     }
 
     private function migrateReferrals(): void
@@ -188,33 +222,73 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('referrals', function (Blueprint $table) {
-            $table->nullableMorphs('referrer');
-            $table->nullableMorphs('referred');
-        });
-
-        $leadLifecycles = DB::table('leads')->pluck('lifecycle', 'id');
-
-        foreach (DB::table('referrals')->get() as $referral) {
-            $referrerLifecycle = $leadLifecycles[$referral->referrer_lead_id] ?? 'lead';
-            $referredLifecycle = $leadLifecycles[$referral->referred_lead_id] ?? 'lead';
-
-            DB::table('referrals')->where('id', $referral->id)->update([
-                'referrer_type' => $this->morphTypeForLifecycle($referrerLifecycle),
-                'referrer_id' => $referral->referrer_lead_id,
-                'referred_type' => $this->morphTypeForLifecycle($referredLifecycle),
-                'referred_id' => $referral->referred_lead_id,
-            ]);
+        if (! Schema::hasColumn('referrals', 'referrer_type')) {
+            Schema::table('referrals', function (Blueprint $table) {
+                $table->nullableMorphs('referrer');
+            });
         }
 
-        Schema::table('referrals', function (Blueprint $table) {
-            $table->dropForeign(['referrer_lead_id']);
-            $table->dropForeign(['referred_lead_id']);
-            $table->dropUnique(['referred_lead_id']);
-            $table->dropIndex(['referrer_lead_id', 'status']);
-            $table->dropColumn(['referrer_lead_id', 'referred_lead_id']);
-            $table->unique(['referred_type', 'referred_id']);
-        });
+        if (! Schema::hasColumn('referrals', 'referred_type')) {
+            Schema::table('referrals', function (Blueprint $table) {
+                $table->nullableMorphs('referred');
+            });
+        }
+
+        $hasLegacyColumns = Schema::hasColumn('referrals', 'referrer_lead_id')
+            || Schema::hasColumn('referrals', 'referred_lead_id');
+
+        if ($hasLegacyColumns && Schema::hasTable('leads')) {
+            $leadLifecycles = Schema::hasColumn('leads', 'lifecycle')
+                ? DB::table('leads')->pluck('lifecycle', 'id')
+                : collect();
+
+            $select = ['id'];
+            if (Schema::hasColumn('referrals', 'referrer_lead_id')) {
+                $select[] = 'referrer_lead_id';
+            }
+            if (Schema::hasColumn('referrals', 'referred_lead_id')) {
+                $select[] = 'referred_lead_id';
+            }
+
+            foreach (DB::table('referrals')->select($select)->get() as $referral) {
+                $updates = [];
+
+                if (isset($referral->referrer_lead_id) && $referral->referrer_lead_id) {
+                    $referrerLifecycle = $leadLifecycles[$referral->referrer_lead_id] ?? 'lead';
+                    $updates['referrer_type'] = $this->morphTypeForLifecycle($referrerLifecycle);
+                    $updates['referrer_id'] = $referral->referrer_lead_id;
+                }
+
+                if (isset($referral->referred_lead_id) && $referral->referred_lead_id) {
+                    $referredLifecycle = $leadLifecycles[$referral->referred_lead_id] ?? 'lead';
+                    $updates['referred_type'] = $this->morphTypeForLifecycle($referredLifecycle);
+                    $updates['referred_id'] = $referral->referred_lead_id;
+                }
+
+                if ($updates !== []) {
+                    DB::table('referrals')->where('id', $referral->id)->update($updates);
+                }
+            }
+        }
+
+        $this->dropColumnWithConstraints('referrals', 'referrer_lead_id');
+        $this->dropColumnWithConstraints('referrals', 'referred_lead_id');
+
+        // Explicit known index names (in case they outlive the columns on partial schemas).
+        $this->dropIndexIfExists('referrals', 'referrals_referred_lead_id_unique');
+        $this->dropIndexIfExists('referrals', 'referrals_referrer_lead_id_status_index');
+        $this->dropForeignKeyIfExists('referrals', 'referrals_referrer_lead_id_foreign');
+        $this->dropForeignKeyIfExists('referrals', 'referrals_referred_lead_id_foreign');
+
+        if (
+            Schema::hasColumn('referrals', 'referred_type')
+            && Schema::hasColumn('referrals', 'referred_id')
+            && ! $this->indexExists('referrals', 'referrals_referred_type_referred_id_unique')
+        ) {
+            Schema::table('referrals', function (Blueprint $table) {
+                $table->unique(['referred_type', 'referred_id']);
+            });
+        }
     }
 
     /**
@@ -222,6 +296,10 @@ return new class extends Migration
      */
     private function splitLeadsByLifecycle(array $lifecycleIds): void
     {
+        if (! Schema::hasTable('leads') || ! Schema::hasColumn('leads', 'lifecycle')) {
+            return;
+        }
+
         $columns = [
             'business_line', 'lifecycle_id', 'status', 'temperature', 'score',
             'first_name', 'last_name', 'email', 'phone', 'address', 'city', 'state', 'country',
@@ -239,9 +317,17 @@ return new class extends Migration
         ];
 
         foreach ($mapping as $lifecycle => $table) {
+            if (! Schema::hasTable($table)) {
+                continue;
+            }
+
             $records = DB::table('leads')->where('lifecycle', $lifecycle)->get();
 
             foreach ($records as $record) {
+                if (DB::table($table)->where('id', $record->id)->exists()) {
+                    continue;
+                }
+
                 $payload = [];
 
                 foreach ($columns as $column) {
@@ -272,6 +358,7 @@ return new class extends Migration
     private function updateMorphReferencesForLifecycle(string $lifecycle, string $table): void
     {
         $morphType = $this->morphTypeForLifecycle($lifecycle);
+        $ids = DB::table($table)->pluck('id');
 
         foreach ($this->childTables as $childTable) {
             if (! Schema::hasTable($childTable) || ! Schema::hasColumn($childTable, 'contact_type')) {
@@ -280,34 +367,38 @@ return new class extends Migration
 
             DB::table($childTable)
                 ->where('contact_type', 'lead')
-                ->whereIn('contact_id', DB::table($table)->pluck('id'))
+                ->whereIn('contact_id', $ids)
                 ->update(['contact_type' => $morphType]);
         }
 
         if (Schema::hasTable('crm_contact_tag')) {
             DB::table('crm_contact_tag')
                 ->where('contact_type', 'lead')
-                ->whereIn('contact_id', DB::table($table)->pluck('id'))
+                ->whereIn('contact_id', $ids)
                 ->update(['contact_type' => $morphType]);
         }
 
         if (Schema::hasTable('crm_contact_user')) {
             DB::table('crm_contact_user')
                 ->where('contact_type', 'lead')
-                ->whereIn('contact_id', DB::table($table)->pluck('id'))
+                ->whereIn('contact_id', $ids)
                 ->update(['contact_type' => $morphType]);
         }
 
         if (Schema::hasTable('referrals')) {
-            DB::table('referrals')
-                ->where('referrer_type', 'lead')
-                ->whereIn('referrer_id', DB::table($table)->pluck('id'))
-                ->update(['referrer_type' => $morphType]);
+            if (Schema::hasColumn('referrals', 'referrer_type')) {
+                DB::table('referrals')
+                    ->where('referrer_type', 'lead')
+                    ->whereIn('referrer_id', $ids)
+                    ->update(['referrer_type' => $morphType]);
+            }
 
-            DB::table('referrals')
-                ->where('referred_type', 'lead')
-                ->whereIn('referred_id', DB::table($table)->pluck('id'))
-                ->update(['referred_type' => $morphType]);
+            if (Schema::hasColumn('referrals', 'referred_type')) {
+                DB::table('referrals')
+                    ->where('referred_type', 'lead')
+                    ->whereIn('referred_id', $ids)
+                    ->update(['referred_type' => $morphType]);
+            }
         }
     }
 
@@ -316,11 +407,8 @@ return new class extends Migration
      */
     private function finalizeLeadsTable(array $lifecycleIds): void
     {
-        if (Schema::hasColumn('leads', 'referred_by_lead_id')) {
-            Schema::table('leads', function (Blueprint $table) {
-                $table->dropConstrainedForeignId('referred_by_lead_id');
-            });
-        }
+        $this->dropColumnWithConstraints('leads', 'referred_by_lead_id');
+        $this->dropForeignKeyIfExists('leads', 'leads_referred_by_lead_id_foreign');
 
         if (! Schema::hasColumn('leads', 'lifecycle')) {
             return;
@@ -328,6 +416,7 @@ return new class extends Migration
 
         // Index may be missing if the create migration failed partway or used a prefix fallback.
         $this->dropIndexIfExists('leads', 'leads_lifecycle_status_index');
+        $this->dropIndexesOnColumn('leads', 'lifecycle');
 
         Schema::table('leads', function (Blueprint $table) {
             $table->dropColumn('lifecycle');
@@ -352,23 +441,126 @@ return new class extends Migration
                 continue;
             }
 
+            // Known composite indexes first (safe even when FK is absent).
             foreach ($indexesByTable[$tableName] ?? [] as $indexName) {
                 $this->dropIndexIfExists($tableName, $indexName);
             }
 
-            Schema::table($tableName, function (Blueprint $table) {
-                $table->dropConstrainedForeignId('lead_id');
-            });
+            // Drops any FK name on lead_id, remaining indexes, then the column.
+            $this->dropColumnWithConstraints($tableName, 'lead_id');
+        }
+    }
+
+    /**
+     * Drop any foreign keys on a column, any non-primary indexes involving it, then the column.
+     */
+    private function dropColumnWithConstraints(string $table, string $column): void
+    {
+        if (! Schema::hasTable($table) || ! Schema::hasColumn($table, $column)) {
+            return;
+        }
+
+        $this->dropForeignKeysOnColumn($table, $column);
+        $this->dropIndexesOnColumn($table, $column);
+
+        Schema::table($table, function (Blueprint $blueprint) use ($column) {
+            $blueprint->dropColumn($column);
+        });
+    }
+
+    /**
+     * Drop every foreign key that references the given column (any constraint name).
+     */
+    private function dropForeignKeysOnColumn(string $table, string $column): void
+    {
+        $constraints = DB::select(
+            'SELECT DISTINCT CONSTRAINT_NAME
+             FROM information_schema.KEY_COLUMN_USAGE
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND COLUMN_NAME = ?
+               AND REFERENCED_TABLE_NAME IS NOT NULL',
+            [$table, $column]
+        );
+
+        foreach ($constraints as $constraint) {
+            $this->dropForeignKeyIfExists($table, $constraint->CONSTRAINT_NAME);
+        }
+
+        // Also try Laravel's conventional name in case information_schema is lagging.
+        $this->dropForeignKeyIfExists($table, "{$table}_{$column}_foreign");
+    }
+
+    private function dropForeignKeyIfExists(string $table, string $foreignKey): void
+    {
+        if (! $this->foreignKeyExists($table, $foreignKey)) {
+            return;
+        }
+
+        Schema::table($table, function (Blueprint $blueprint) use ($foreignKey) {
+            $blueprint->dropForeign($foreignKey);
+        });
+    }
+
+    private function foreignKeyExists(string $table, string $foreignKey): bool
+    {
+        $exists = DB::selectOne(
+            'SELECT CONSTRAINT_NAME
+             FROM information_schema.TABLE_CONSTRAINTS
+             WHERE CONSTRAINT_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND CONSTRAINT_NAME = ?
+               AND CONSTRAINT_TYPE = ?',
+            [$table, $foreignKey, 'FOREIGN KEY']
+        );
+
+        return $exists !== null;
+    }
+
+    /**
+     * Drop every non-primary index that includes the given column.
+     */
+    private function dropIndexesOnColumn(string $table, string $column): void
+    {
+        $indexes = DB::select(
+            'SELECT DISTINCT INDEX_NAME
+             FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND COLUMN_NAME = ?
+               AND INDEX_NAME != ?',
+            [$table, $column, 'PRIMARY']
+        );
+
+        foreach ($indexes as $index) {
+            $this->dropIndexIfExists($table, $index->INDEX_NAME);
         }
     }
 
     private function dropIndexIfExists(string $table, string $indexName): void
     {
-        try {
-            DB::statement("ALTER TABLE `{$table}` DROP INDEX `{$indexName}`");
-        } catch (\Throwable) {
-            // Ignore missing indexes across database engines.
+        if (! $this->indexExists($table, $indexName)) {
+            return;
         }
+
+        Schema::table($table, function (Blueprint $blueprint) use ($indexName) {
+            $blueprint->dropIndex($indexName);
+        });
+    }
+
+    private function indexExists(string $table, string $indexName): bool
+    {
+        $exists = DB::selectOne(
+            'SELECT INDEX_NAME
+             FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND INDEX_NAME = ?
+             LIMIT 1',
+            [$table, $indexName]
+        );
+
+        return $exists !== null;
     }
 
     private function morphTypeForLifecycle(string $lifecycle): string
