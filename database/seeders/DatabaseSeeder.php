@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             RolesSeeder::class,
+            ExistingUsersSeeder::class,
             MediaItemsSeeder::class,
             CrmSeeder::class,
             CalendarSeeder::class,
@@ -30,7 +31,8 @@ class DatabaseSeeder extends Seeder
             CrmPremiumDemoSeeder::class,
         ]);
 
-        $user = User::query()->updateOrCreate(
+        // Bootstrap super-admin only when not already restored from ExistingUsersSeeder.
+        $user = User::query()->firstOrCreate(
             ['email' => 'jclustre@gmail.com'],
             [
                 'name' => 'Joey Lustre',

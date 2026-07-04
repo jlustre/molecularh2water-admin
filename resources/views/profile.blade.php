@@ -13,7 +13,7 @@
     $roles = $user?->roles()->orderBy('name')->get() ?? collect();
     $isVerified = filled($user?->email_verified_at);
     $canDeleteAccount = $user?->hasRole('super-admin') ?? false;
-    $avatarUrl = $user?->avatar_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($user->avatar_path) : null;
+    $avatarUrl = $user?->avatarUrl();
     $accountCards = $user ? ProfileAccountOverview::cards($user) : [];
 @endphp
 

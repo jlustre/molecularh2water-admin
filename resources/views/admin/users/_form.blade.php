@@ -1,6 +1,62 @@
 @csrf
 
 <div class="grid gap-5 lg:grid-cols-2">
+    @if ($user->exists)
+        @php
+            $avatarUrl = $user->avatarUrl();
+            $avatarInitials = collect(explode(' ', trim(old('name', $user->name))))
+                ->filter()
+                ->take(2)
+                ->map(fn ($part) => mb_substr($part, 0, 1))
+                ->join('') ?: 'AU';
+        @endphp
+        <div
+            class="lg:col-span-2 rounded-lg border border-teal-100 bg-teal-50/70 p-4"
+            x-data="{
+                previewUrl: @js($avatarUrl),
+                updatePreview(event) {
+                    const file = event.target.files[0];
+
+                    if (! file) {
+                        return;
+                    }
+
+                    if (this.previewUrl && this.previewUrl.startsWith('blob:')) {
+                        URL.revokeObjectURL(this.previewUrl);
+                    }
+
+                    this.previewUrl = URL.createObjectURL(file);
+                },
+            }"
+        >
+            <p class="text-sm font-semibold text-slate-700">Avatar</p>
+            <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div class="relative size-24 overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-teal-300 to-teal-700 shadow-md">
+                    <img x-show="previewUrl" :src="previewUrl" alt="Avatar preview" class="size-full object-cover">
+                    <span x-show="! previewUrl" class="flex size-full items-center justify-center text-2xl font-black text-white">
+                        {{ $avatarInitials }}
+                    </span>
+                </div>
+
+                <div class="min-w-0 flex-1">
+                    <label for="avatar" class="block text-sm font-semibold text-slate-700">Upload or replace avatar</label>
+                    <input
+                        id="avatar"
+                        name="avatar"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        x-on:change="updatePreview($event)"
+                        class="mt-2 block w-full rounded-md border border-teal-100 bg-white text-sm text-slate-700 shadow-sm file:mr-4 file:border-0 file:bg-teal-700 file:px-4 file:py-2 file:text-sm file:font-bold file:text-white hover:file:bg-teal-800 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600"
+                    >
+                    <p class="mt-2 text-xs text-slate-500">PNG, JPG, or WEBP up to 2 MB. Preview updates before you save.</p>
+                    @error('avatar')
+                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div>
         <label for="name" class="block text-sm font-semibold text-slate-700">Name</label>
         <input id="name" name="name" type="text" value="{{ old('name', $user->name) }}" required class="mt-1 block w-full rounded-md border-teal-100 text-slate-900 shadow-sm focus:border-teal-500 focus:ring-teal-500" placeholder="Jane Smith">

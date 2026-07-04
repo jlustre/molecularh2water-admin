@@ -9,7 +9,7 @@
         </section>
 
         <section class="rounded-lg border border-teal-100 bg-white p-6 shadow-sm">
-            <form method="POST" action="{{ route('admin.users.update', $user) }}">
+            <form method="POST" action="{{ route('admin.users.update', $user) }}" enctype="multipart/form-data">
                 @method('PUT')
                 @include('admin.users._form', ['submitLabel' => 'Save Changes'])
             </form>

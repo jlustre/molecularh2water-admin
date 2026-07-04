@@ -65,6 +65,7 @@ class CrmPermissions
                     'users.create' => 'Create users',
                     'users.update' => 'Update users',
                     'users.delete' => 'Delete users',
+                    'users.export' => 'Update users seeder',
                 ],
             ],
             'content' => [

@@ -183,4 +183,22 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return count($this->resolvedBusinessLineValues()) > 1;
     }
+
+    /**
+     * Public avatar URL with a cache-busting query so browsers pick up replacements.
+     *
+     * Served via AvatarController (/avatars/{filename}) so images work even when
+     * public/storage cannot be symlinked (common on shared hosting).
+     */
+    public function avatarUrl(): ?string
+    {
+        if (! $this->avatar_path) {
+            return null;
+        }
+
+        $url = route('avatars.show', ['filename' => basename($this->avatar_path)]);
+        $version = $this->updated_at?->getTimestamp() ?? time();
+
+        return $url.'?v='.$version;
+    }
 }

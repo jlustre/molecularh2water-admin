@@ -20,7 +20,8 @@ class CrmUsersSeeder extends Seeder
             ->whereHas('roles', fn ($query) => $query->where('slug', 'super-admin'))
             ->value('id');
 
-        $manager = User::query()->updateOrCreate(
+        // Only create demo accounts when the email is not already taken (e.g. by ExistingUsersSeeder).
+        $manager = User::query()->firstOrCreate(
             ['email' => 'manager@crm.demo'],
             [
                 'name' => 'Edwin Lagadi',
@@ -38,7 +39,7 @@ class CrmUsersSeeder extends Seeder
             ['email' => 'agent2@crm.demo', 'name' => 'Jordan Kim', 'business_lines' => [BusinessLine::H2s->value]],
             ['email' => 'agent3@crm.demo', 'name' => 'Sam Patel', 'business_lines' => BusinessLine::values()],
         ] as $agent) {
-            $user = User::query()->updateOrCreate(
+            $user = User::query()->firstOrCreate(
                 ['email' => $agent['email']],
                 [
                     'name' => $agent['name'],

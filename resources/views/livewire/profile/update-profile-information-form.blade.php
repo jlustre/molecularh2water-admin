@@ -22,11 +22,10 @@ new class extends Component
      */
     public function mount(): void
     {
-        $this->name = Auth::user()->name;
-        $this->email = Auth::user()->email;
-        $this->avatarUrl = Auth::user()->avatar_path
-            ? Storage::disk('public')->url(Auth::user()->avatar_path)
-            : null;
+        $user = Auth::user();
+        $this->name = $user->name;
+        $this->email = $user->email;
+        $this->avatarUrl = $user->avatarUrl();
     }
 
     public function updatedAvatar(): void
@@ -67,10 +66,9 @@ new class extends Component
         }
 
         $user->save();
+        $user->refresh();
 
-        $this->avatarUrl = $user->avatar_path
-            ? Storage::disk('public')->url($user->avatar_path)
-            : null;
+        $this->avatarUrl = $user->avatarUrl();
         $this->reset('avatar');
 
         $this->dispatch('profile-updated', name: $user->name, avatarUrl: $this->avatarUrl);

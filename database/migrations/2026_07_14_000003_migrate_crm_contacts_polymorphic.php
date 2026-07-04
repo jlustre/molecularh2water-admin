@@ -460,6 +460,13 @@ return new class extends Migration
             return;
         }
 
+        // SQLite cannot ALTER DROP a column that participates in an (often unnamed) FK.
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            $this->sqliteDropColumn($table, $column);
+
+            return;
+        }
+
         $this->dropForeignKeysOnColumn($table, $column);
         $this->dropIndexesOnColumn($table, $column);
 
@@ -469,25 +476,90 @@ return new class extends Migration
     }
 
     /**
+     * Rebuild a SQLite table without the given column and any FK clauses that reference it.
+     */
+    private function sqliteDropColumn(string $table, string $column): void
+    {
+        $createSql = DB::selectOne(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+            [$table]
+        )?->sql;
+
+        if (! is_string($createSql) || $createSql === '') {
+            return;
+        }
+
+        $remainingColumns = collect(Schema::getColumnListing($table))
+            ->reject(fn (string $name) => $name === $column)
+            ->values()
+            ->all();
+
+        if ($remainingColumns === []) {
+            return;
+        }
+
+        $tempTable = $table.'__tmp_drop_col';
+        $quotedColumn = preg_quote($column, '/');
+
+        // Remove FK clauses that reference the dropped column (quoted or bare table names).
+        $createSql = preg_replace(
+            '/,\s*foreign key\("'.$quotedColumn.'"\)\s+references\s+["\w]+\s*\("[^"]+"\)(?:\s+on\s+(?:delete|update)\s+(?:set\s+null|set\s+default|cascade|restrict|no\s+action))*/i',
+            '',
+            $createSql
+        ) ?? $createSql;
+
+        // Remove the column definition (first column or subsequent).
+        $createSql = preg_replace(
+            '/\(\s*"'.$quotedColumn.'"\s+[^,]+,\s*/i',
+            '(',
+            $createSql
+        ) ?? $createSql;
+
+        $createSql = preg_replace(
+            '/,\s*"'.$quotedColumn.'"\s+[^,)]+/i',
+            '',
+            $createSql
+        ) ?? $createSql;
+
+        $createSql = preg_replace(
+            '/CREATE TABLE ["`]?'.preg_quote($table, '/').'["`]?/i',
+            'CREATE TABLE "'.$tempTable.'"',
+            $createSql,
+            1
+        ) ?? $createSql;
+
+        Schema::disableForeignKeyConstraints();
+
+        try {
+            Schema::dropIfExists($tempTable);
+            DB::statement($createSql);
+
+            $quotedColumns = collect($remainingColumns)
+                ->map(fn (string $name) => '"'.str_replace('"', '""', $name).'"')
+                ->implode(', ');
+
+            DB::statement("INSERT INTO \"{$tempTable}\" ({$quotedColumns}) SELECT {$quotedColumns} FROM \"{$table}\"");
+            Schema::drop($table);
+            DB::statement("ALTER TABLE \"{$tempTable}\" RENAME TO \"{$table}\"");
+        } finally {
+            Schema::enableForeignKeyConstraints();
+        }
+    }
+
+    /**
      * Drop every foreign key that references the given column (any constraint name).
      */
     private function dropForeignKeysOnColumn(string $table, string $column): void
     {
-        $constraints = DB::select(
-            'SELECT DISTINCT CONSTRAINT_NAME
-             FROM information_schema.KEY_COLUMN_USAGE
-             WHERE TABLE_SCHEMA = DATABASE()
-               AND TABLE_NAME = ?
-               AND COLUMN_NAME = ?
-               AND REFERENCED_TABLE_NAME IS NOT NULL',
-            [$table, $column]
-        );
+        foreach (Schema::getForeignKeys($table) as $foreignKey) {
+            $name = $foreignKey['name'] ?? null;
 
-        foreach ($constraints as $constraint) {
-            $this->dropForeignKeyIfExists($table, $constraint->CONSTRAINT_NAME);
+            if (is_string($name) && $name !== '' && in_array($column, $foreignKey['columns'], true)) {
+                $this->dropForeignKeyIfExists($table, $name);
+            }
         }
 
-        // Also try Laravel's conventional name in case information_schema is lagging.
+        // Also try Laravel's conventional name in case the driver omits a constraint.
         $this->dropForeignKeyIfExists($table, "{$table}_{$column}_foreign");
     }
 
@@ -504,17 +576,13 @@ return new class extends Migration
 
     private function foreignKeyExists(string $table, string $foreignKey): bool
     {
-        $exists = DB::selectOne(
-            'SELECT CONSTRAINT_NAME
-             FROM information_schema.TABLE_CONSTRAINTS
-             WHERE CONSTRAINT_SCHEMA = DATABASE()
-               AND TABLE_NAME = ?
-               AND CONSTRAINT_NAME = ?
-               AND CONSTRAINT_TYPE = ?',
-            [$table, $foreignKey, 'FOREIGN KEY']
-        );
+        foreach (Schema::getForeignKeys($table) as $constraint) {
+            if ($constraint['name'] === $foreignKey) {
+                return true;
+            }
+        }
 
-        return $exists !== null;
+        return false;
     }
 
     /**
@@ -522,18 +590,14 @@ return new class extends Migration
      */
     private function dropIndexesOnColumn(string $table, string $column): void
     {
-        $indexes = DB::select(
-            'SELECT DISTINCT INDEX_NAME
-             FROM information_schema.STATISTICS
-             WHERE TABLE_SCHEMA = DATABASE()
-               AND TABLE_NAME = ?
-               AND COLUMN_NAME = ?
-               AND INDEX_NAME != ?',
-            [$table, $column, 'PRIMARY']
-        );
+        foreach (Schema::getIndexes($table) as $index) {
+            if (($index['primary'] ?? false) === true) {
+                continue;
+            }
 
-        foreach ($indexes as $index) {
-            $this->dropIndexIfExists($table, $index->INDEX_NAME);
+            if (in_array($column, $index['columns'], true)) {
+                $this->dropIndexIfExists($table, $index['name']);
+            }
         }
     }
 
@@ -550,17 +614,13 @@ return new class extends Migration
 
     private function indexExists(string $table, string $indexName): bool
     {
-        $exists = DB::selectOne(
-            'SELECT INDEX_NAME
-             FROM information_schema.STATISTICS
-             WHERE TABLE_SCHEMA = DATABASE()
-               AND TABLE_NAME = ?
-               AND INDEX_NAME = ?
-             LIMIT 1',
-            [$table, $indexName]
-        );
+        foreach (Schema::getIndexes($table) as $index) {
+            if ($index['name'] === $indexName) {
+                return true;
+            }
+        }
 
-        return $exists !== null;
+        return false;
     }
 
     private function morphTypeForLifecycle(string $lifecycle): string

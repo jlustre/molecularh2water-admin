@@ -1,6 +1,6 @@
 <div>
     @if ($show)
-        <div class="fixed inset-0 z-50 overflow-y-auto px-4 py-6 sm:px-0" role="dialog" aria-modal="true" aria-labelledby="pipeline-stage-leads-title">
+        <div class="shell-modal-overlay fixed inset-0 flex items-center justify-center overflow-y-auto px-4 py-6" role="dialog" aria-modal="true" aria-labelledby="pipeline-stage-leads-title">
             <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" wire:click="close"></div>
 
             <div class="relative mx-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">

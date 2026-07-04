@@ -12,7 +12,7 @@
         ->map(fn ($part) => mb_substr($part, 0, 1))
         ->join('');
     $initials = $initials !== '' ? mb_strtoupper($initials) : 'U';
-    $avatarUrl = $user?->avatar_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($user->avatar_path) : null;
+    $avatarUrl = $user?->avatarUrl();
     $roleLabel = $roleLabel ?? match (true) {
         $user?->hasRole('super-admin') => 'Super Admin',
         $user?->hasRole('admin') => 'Administrator',
@@ -23,21 +23,50 @@
     };
 @endphp
 
-<details {{ $attributes->merge(['class' => 'group relative shrink-0']) }}>
+<details
+    {{ $attributes->merge(['class' => 'group relative shrink-0']) }}
+    x-data="{
+        avatarUrl: @js($avatarUrl),
+        userName: @js($userName),
+        initials: @js($initials),
+        initialsFrom(name) {
+            const parts = String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2);
+
+            return parts.map((part) => part.charAt(0)).join('').toUpperCase() || 'U';
+        },
+    }"
+    x-on:profile-updated.window="
+        if ($event.detail.avatarUrl !== undefined) {
+            avatarUrl = $event.detail.avatarUrl;
+        }
+
+        if ($event.detail.name) {
+            userName = $event.detail.name;
+            initials = initialsFrom(userName);
+        }
+    "
+>
     <summary
         aria-label="Open user menu"
         class="flex cursor-pointer list-none items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-400 [&::-webkit-details-marker]:hidden"
     >
         <span class="relative flex items-center">
-            @if ($avatarUrl)
-                <img src="{{ $avatarUrl }}" alt="{{ $userName }} avatar" class="size-10 rounded-full border-2 border-white object-cover shadow-inner">
-            @else
-                <span class="inline-flex size-10 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-teal-400/80 to-teal-700/80 text-sm font-bold text-white shadow-inner">{{ $initials }}</span>
-            @endif
+            <img
+                x-show="avatarUrl"
+                x-cloak
+                :src="avatarUrl"
+                :alt="userName + ' avatar'"
+                class="size-10 rounded-full border-2 border-white object-cover shadow-inner"
+            >
+            <span
+                x-show="! avatarUrl"
+                x-text="initials"
+                class="inline-flex size-10 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-teal-400/80 to-teal-700/80 text-sm font-bold text-white shadow-inner"
+            >{{ $initials }}</span>
             <span class="absolute bottom-0 right-0 size-3 rounded-full border-2 border-white bg-emerald-400"></span>
         </span>
         <span class="hidden flex-col items-start sm:flex">
-            <span class="max-w-32 truncate text-sm font-semibold leading-tight text-slate-900">{{ $userName }}</span>
+            <span class="max-w-32 truncate text-sm font-semibold leading-tight text-slate-900" x-text="userName">{{ $userName }}</span>
             <span class="text-xs text-teal-700">{{ $roleLabel }}</span>
         </span>
         <svg width="18" height="18" fill="none" viewBox="0 0 18 18" class="text-teal-700 transition group-open:rotate-180"><path d="M6 7l3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -45,7 +74,7 @@
 
     <div class="absolute right-0 top-full z-50 mt-3 w-64 overflow-hidden rounded-lg border border-teal-100 bg-white shadow-xl shadow-teal-950/10">
         <div class="border-b border-teal-50 px-4 py-3">
-            <p class="truncate text-sm font-semibold text-slate-900">{{ $userName }}</p>
+            <p class="truncate text-sm font-semibold text-slate-900" x-text="userName">{{ $userName }}</p>
             <p class="truncate text-xs text-teal-700">{{ $userEmail }}</p>
         </div>
 

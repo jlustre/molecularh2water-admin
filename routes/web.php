@@ -9,9 +9,16 @@ use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WarrantyRegistrationController;
+use App\Http\Controllers\AvatarController;
+use App\Http\Controllers\NotificationReadController;
 use App\Http\Controllers\ResourcesController;
 
 Route::view('/', 'welcome');
+
+// Serve avatars from storage/app/public without requiring public/storage symlink.
+Route::get('avatars/{filename}', AvatarController::class)
+    ->where('filename', '[A-Za-z0-9._-]+')
+    ->name('avatars.show');
 
 Route::get('dashboard', PortalDashboard::class)
     ->middleware(['auth'])
@@ -41,6 +48,10 @@ Route::get('media/{mediaItem}', [ResourcesController::class, 'show'])
 Route::view('profile', 'profile', ['header' => 'Profile', 'title' => 'Profile'])
     ->middleware(['auth'])
     ->name('profile');
+
+Route::get('notifications/{notification}', NotificationReadController::class)
+    ->middleware(['auth'])
+    ->name('notifications.read');
 
 require __DIR__.'/auth.php';
 
@@ -99,6 +110,9 @@ Route::middleware(['auth', 'admin.access'])
             })->name('appointments');
         Route::resource('/warranty-registrations', WarrantyRegistrationController::class)
             ->except(['create', 'store']);
+        Route::post('/users/update-seeder', [UserController::class, 'updateSeeder'])
+            ->middleware('permission:users.export')
+            ->name('users.update-seeder');
         Route::resource('/users', UserController::class)->except('show');
         Route::get('/users-hierarchy', [UserController::class, 'hierarchy'])->name('users.hierarchy');
         Route::resource('/roles', RoleController::class)->except('show');

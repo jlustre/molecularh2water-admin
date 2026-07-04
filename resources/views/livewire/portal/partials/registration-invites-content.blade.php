@@ -149,7 +149,7 @@
 </div>
 
 @if ($showEmailModal)
-    <div class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 p-4">
+    <div class="shell-modal-overlay-nested fixed inset-0 flex items-center justify-center bg-slate-900/50 p-4">
         <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <h3 class="text-lg font-bold text-slate-900">Email registration invite</h3>
             <p class="mt-1 text-sm text-slate-600">

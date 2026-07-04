@@ -21,9 +21,9 @@ test('profile page is displayed', function () {
 
     $html = $response
         ->assertOk()
-        ->assertSee('Associate Portal')
+        ->assertSee('data-shell-brand', false)
+        ->assertSee('data-shell-topbar', false)
         ->assertSee('layoutSidebar()')
-        ->assertSee('Workspace')
         ->assertSee('Profile Center')
         ->assertSee('Account Overview')
         ->assertSee('Email Status')
@@ -68,7 +68,8 @@ test('profile information can be updated', function () {
 
     $component
         ->assertHasNoErrors()
-        ->assertNoRedirect();
+        ->assertNoRedirect()
+        ->assertDispatched('profile-updated', name: 'Test User');
 
     $user->refresh();
 
@@ -101,9 +102,33 @@ test('profile avatar can be uploaded and replaced', function () {
 
     expect($user->avatar_path)->not->toBeNull();
     expect($user->avatar_path)->toStartWith('avatars/');
+    expect($user->avatarUrl())->toContain('/avatars/'.basename($user->avatar_path));
+    expect($user->avatarUrl())->toContain('?v=');
+    expect($user->avatarUrl())->toContain((string) $user->updated_at->getTimestamp());
+    expect($component->get('avatarUrl'))->toBe($user->avatarUrl());
+
+    $component->assertDispatched('profile-updated', name: 'Avatar User', avatarUrl: $user->avatarUrl());
 
     Storage::disk('public')->assertExists($user->avatar_path);
     Storage::disk('public')->assertMissing($oldAvatarPath);
+});
+
+test('profile page user menu listens for avatar updates', function () {
+    Storage::fake('public');
+
+    $avatarPath = UploadedFile::fake()
+        ->image('avatar.jpg', 120, 120)
+        ->store('avatars', 'public');
+    $user = User::factory()->create(['avatar_path' => $avatarPath]);
+    $user->roles()->attach(Role::query()->where('slug', 'member')->first());
+
+    $this->actingAs($user);
+
+    $this->get('/profile')
+        ->assertOk()
+        ->assertSee('profile-updated.window', false)
+        ->assertSee(basename($avatarPath), false)
+        ->assertSee('?v='.$user->updated_at->getTimestamp(), false);
 });
 
 test('email verification status is unchanged when the email address is unchanged', function () {

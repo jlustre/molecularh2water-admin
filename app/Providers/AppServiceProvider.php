@@ -6,6 +6,7 @@ use App\Models\Crm\Customer;
 use App\Models\Crm\Lead;
 use App\Models\Crm\Prospect;
 use App\Models\Crm\Recruit;
+use App\Models\User;
 use App\Policies\Crm\LeadPolicy;
 use App\Support\Crm\CrmContactResolver;
 use App\Support\Crm\CrmScope;
@@ -43,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
             'prospect' => Prospect::class,
             'customer' => Customer::class,
             'recruit' => Recruit::class,
+            'user' => User::class,
         ]);
 
         foreach ([Lead::class, Prospect::class, Customer::class, Recruit::class] as $model) {

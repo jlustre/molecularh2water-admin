@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Services\SponsorHierarchyService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
@@ -138,6 +140,7 @@ class UserController extends Controller
             ],
             'business_lines' => ['nullable', 'array'],
             'business_lines.*' => [Rule::in(BusinessLine::values())],
+            'avatar' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ]);
 
         $isSuperAdmin = $user->isSuperAdmin();
@@ -155,6 +158,14 @@ class UserController extends Controller
 
         if (! empty($attributes['password'])) {
             $user->password = $attributes['password'];
+        }
+
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar_path) {
+                Storage::disk('public')->delete($user->avatar_path);
+            }
+
+            $user->avatar_path = $request->file('avatar')->store('avatars', 'public');
         }
 
         $user->save();
@@ -177,6 +188,51 @@ class UserController extends Controller
         return redirect()
             ->route('admin.users.index')
             ->with('status', 'User deleted.');
+    }
+
+    /**
+     * Export current users into the ExistingUsersSeeder data file so they survive migrate:fresh --seed.
+     */
+    public function updateSeeder(): RedirectResponse
+    {
+        $users = User::query()
+            ->with(['roles:id,slug', 'sponsor:id,email'])
+            ->orderBy('id')
+            ->get()
+            ->map(fn (User $user) => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'password' => $user->getRawOriginal('password'),
+                'email_verified_at' => $user->email_verified_at?->toDateTimeString(),
+                'sponsor_email' => $user->sponsor?->email,
+                'business_lines' => $user->business_lines,
+                'roles' => $user->roles->pluck('slug')->values()->all(),
+            ])
+            ->all();
+
+        $exportedUsers = var_export($users, true);
+        $generatedAt = now()->toDateTimeString();
+        $directory = database_path('seeders/data');
+        $path = $directory.'/existing_users.php';
+
+        File::ensureDirectoryExists($directory);
+        File::put($path, <<<PHP
+<?php
+
+/**
+ * Existing users export for migrate:fresh --seed.
+ * Generated from Admin → User Management at {$generatedAt}.
+ * Password values are already hashed — do not re-hash.
+ */
+return {$exportedUsers};
+
+PHP);
+
+        $count = count($users);
+
+        return redirect()
+            ->route('admin.users.index')
+            ->with('status', 'Users seeder updated with '.$count.' user'.($count === 1 ? '' : 's').'.');
     }
 
     /**

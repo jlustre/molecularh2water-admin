@@ -34,6 +34,14 @@
                         <a href="{{ route('admin.users.hierarchy') }}" class="inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-5 py-3 text-sm font-bold text-teal-800 shadow-sm transition hover:bg-teal-50">
                             View Hierarchy
                         </a>
+                        @if (auth()->user()?->hasPermission('users.export'))
+                            <form method="POST" action="{{ route('admin.users.update-seeder') }}">
+                                @csrf
+                                <button type="submit" class="inline-flex w-full items-center justify-center rounded-md border border-teal-200/30 bg-white/[0.08] px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.12]" title="Write current users into the seeder so they survive migrate:fresh --seed">
+                                    Update users seeder
+                                </button>
+                            </form>
+                        @endif
                         <a href="{{ route('admin.users.create') }}" class="inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-3 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">
                             Add User
                         </a>
