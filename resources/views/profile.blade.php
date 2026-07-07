@@ -63,14 +63,6 @@
                     </aside>
 
                     <div class="bg-slate-50 p-4 text-slate-900 sm:p-6 lg:p-8">
-                        <section class="mb-6 rounded-lg border border-teal-100 bg-white p-6 shadow-sm">
-                            <p class="text-xs font-bold uppercase tracking-[0.2em] text-teal-700">Profile Center</p>
-                            <h2 class="mt-2 text-3xl font-black tracking-normal text-slate-950">Manage your account details and security.</h2>
-                            <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
-                                Keep your contact details current, rotate your password regularly, and review the access roles connected to your account.
-                            </p>
-                        </section>
-
                         <div class="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
                             <div class="space-y-6">
                                 <section class="rounded-lg border border-teal-100 bg-white p-6 shadow-sm">

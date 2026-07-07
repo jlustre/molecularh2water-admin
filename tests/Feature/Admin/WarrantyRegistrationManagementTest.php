@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Models\WarrantyRegistration;
 use App\Support\FrontendUrl;
+use Illuminate\Support\Facades\File;
 
 it('allows an admin to manage warranty registrations', function () {
     config([
@@ -30,7 +31,10 @@ it('allows an admin to manage warranty registrations', function () {
         ->assertSee('Registration Records')
         ->assertSee('Customer warranty submissions')
         ->assertSee('Jane Owner')
-        ->assertSee('H2-ADMIN-001');
+        ->assertSee('H2-ADMIN-001')
+        ->assertSee('Purchased From')
+        ->assertSee('H2Systems Demo')
+        ->assertSee('Update Seeder');
 
     $this->actingAs($admin)
         ->get(route('admin.warranty-registrations.show', $registration))
@@ -70,6 +74,40 @@ it('allows an admin to manage warranty registrations', function () {
     $this->assertDatabaseMissing('warranty_registrations', [
         'id' => $registration->id,
     ]);
+});
+
+it('updates the warranty registrations seeder from current records', function () {
+    $admin = superAdminUser(['name' => 'Admin User']);
+
+    $registration = WarrantyRegistration::create([
+        'customer_name' => 'Seeder Owner',
+        'email' => 'seeder@example.com',
+        'phone' => '555-0199',
+        'serial_number' => 'H2-SEED-001',
+        'machine_model' => 'H2 Hydrogen Water Machine',
+        'purchase_date' => '2026-06-10',
+        'purchased_from' => 'Seeder Dealer',
+        'notes' => 'Seeder note.',
+    ]);
+
+    File::shouldReceive('put')
+        ->once()
+        ->withArgs(function (string $path, string $contents) use ($registration) {
+            expect($path)->toBe(database_path('seeders/WarrantyRegistrationsSeeder.php'));
+
+            return str_contains($contents, 'class WarrantyRegistrationsSeeder')
+                && str_contains($contents, "DB::table('warranty_registrations')->updateOrInsert")
+                && str_contains($contents, "'id' => {$registration->id}")
+                && str_contains($contents, "'customer_name' => 'Seeder Owner'")
+                && str_contains($contents, "'serial_number' => 'H2-SEED-001'")
+                && str_contains($contents, "'purchased_from' => 'Seeder Dealer'");
+        })
+        ->andReturn(1);
+
+    $this->actingAs($admin)
+        ->post(route('admin.warranty-registrations.update-seeder'))
+        ->assertRedirect(route('admin.warranty-registrations.index'))
+        ->assertSessionHas('status', 'WarrantyRegistrationsSeeder.php updated with 1 registration.');
 });
 
 it('resolves frontend warranty urls by environment defaults', function () {

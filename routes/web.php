@@ -108,6 +108,8 @@ Route::middleware(['auth', 'admin.access'])
 
                 return view('admin.placeholders.appointments');
             })->name('appointments');
+        Route::post('/warranty-registrations/update-seeder', [WarrantyRegistrationController::class, 'updateSeeder'])
+            ->name('warranty-registrations.update-seeder');
         Route::resource('/warranty-registrations', WarrantyRegistrationController::class)
             ->except(['create', 'store']);
         Route::post('/users/update-seeder', [UserController::class, 'updateSeeder'])

@@ -1,6 +1,6 @@
 {{-- Fixed brand panel: always visible, independent of sidebarOpen. Geometry from [data-shell-brand] in shell layout. --}}
 <div
-    class="border-b border-r border-teal-600/10 bg-white px-4"
+    class="border-b border-teal-600/10 bg-white px-4"
     data-shell-brand
 >
     <a

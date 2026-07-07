@@ -24,7 +24,7 @@ test('profile page is displayed', function () {
         ->assertSee('data-shell-brand', false)
         ->assertSee('data-shell-topbar', false)
         ->assertSee('layoutSidebar()')
-        ->assertSee('Profile Center')
+        ->assertSee('images/favicon.png', false)
         ->assertSee('Account Overview')
         ->assertSee('Email Status')
         ->assertSee('Business Lines')

@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             RolesSeeder::class,
             ExistingUsersSeeder::class,
             MediaItemsSeeder::class,
+            WarrantyRegistrationsSeeder::class,
             CrmSeeder::class,
             CalendarSeeder::class,
             CrmUsersSeeder::class,

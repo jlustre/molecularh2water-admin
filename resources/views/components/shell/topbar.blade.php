@@ -14,7 +14,7 @@
 @endphp
 
 <section class="flex h-full w-full items-center border-b border-teal-100/60 bg-white">
-    <div class="flex h-full w-full items-center gap-3 px-4 sm:gap-4 sm:px-6">
+    <div class="flex h-full w-full items-center gap-3 pl-2 pr-4 sm:gap-4 sm:pr-6">
         {{-- Left: toggle + search --}}
         <div class="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
             <x-sidebar.toggle />

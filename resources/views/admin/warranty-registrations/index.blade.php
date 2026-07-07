@@ -44,14 +44,22 @@
                             Review customer submissions from the public warranty registration page.
                         </p>
                     </div>
-                    <a
-                        class="inline-flex shrink-0 items-center justify-center rounded-md bg-teal-400 px-4 py-2.5 text-sm font-bold text-[#031a19] transition hover:bg-teal-300"
-                        href="{{ $warrantyUrl }}"
-                        rel="noreferrer"
-                        target="_blank"
-                    >
-                        Open Public Page
-                    </a>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <a
+                            class="inline-flex shrink-0 items-center justify-center rounded-md bg-teal-400 px-4 py-2.5 text-sm font-bold text-[#031a19] transition hover:bg-teal-300"
+                            href="{{ $warrantyUrl }}"
+                            rel="noreferrer"
+                            target="_blank"
+                        >
+                            Open Public Page
+                        </a>
+                        <form method="POST" action="{{ route('admin.warranty-registrations.update-seeder') }}">
+                            @csrf
+                            <button type="submit" class="inline-flex w-full shrink-0 items-center justify-center rounded-md border border-teal-200/30 bg-white/[0.08] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/[0.12]">
+                                Update Seeder
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </section>
@@ -122,6 +130,7 @@
                             <th class="px-3 py-2.5">Customer</th>
                             <th class="px-3 py-2.5">Serial Number</th>
                             <th class="px-3 py-2.5">Model</th>
+                            <th class="px-3 py-2.5">Purchased From</th>
                             <th class="px-3 py-2.5">Purchase Date</th>
                             <th class="px-3 py-2.5">Registered</th>
                             <th class="px-3 py-2.5 text-right">Actions</th>
@@ -137,6 +146,7 @@
                                 </td>
                                 <td class="px-3 py-3 font-mono text-xs font-bold text-slate-800">{{ $registration->serial_number }}</td>
                                 <td class="px-3 py-3 text-slate-600">{{ $registration->machine_model }}</td>
+                                <td class="px-3 py-3 text-slate-600">{{ $registration->purchased_from ?: 'Not provided' }}</td>
                                 <td class="px-3 py-3 text-slate-500">{{ $registration->purchase_date?->format('M j, Y') }}</td>
                                 <td class="px-3 py-3 text-slate-500">{{ $registration->created_at?->format('M j, Y') }}</td>
                                 <td class="px-3 py-3">
@@ -182,7 +192,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td class="px-3 py-10 text-center text-slate-500" colspan="6">
+                                <td class="px-3 py-10 text-center text-slate-500" colspan="7">
                                     <p class="font-bold text-slate-900">No warranty registrations yet</p>
                                     <p class="mt-1 text-sm">Customer submissions from the public warranty page will appear here.</p>
                                 </td>

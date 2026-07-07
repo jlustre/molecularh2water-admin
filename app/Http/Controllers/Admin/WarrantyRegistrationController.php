@@ -8,6 +8,7 @@ use App\Rules\UniqueWarrantySerialNumber;
 use App\Support\FrontendUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\View\View;
 
 class WarrantyRegistrationController extends Controller
@@ -78,6 +79,74 @@ class WarrantyRegistrationController extends Controller
         return view('admin.warranty-registrations.edit', [
             'registration' => $warrantyRegistration,
         ]);
+    }
+
+    public function updateSeeder(): RedirectResponse
+    {
+        $registrations = WarrantyRegistration::query()
+            ->orderBy('id')
+            ->get([
+                'id',
+                'customer_name',
+                'email',
+                'phone',
+                'serial_number',
+                'machine_model',
+                'purchase_date',
+                'purchased_from',
+                'notes',
+                'created_at',
+                'updated_at',
+            ])
+            ->map(fn (WarrantyRegistration $registration) => [
+                'id' => $registration->id,
+                'customer_name' => $registration->customer_name,
+                'email' => $registration->email,
+                'phone' => $registration->phone,
+                'serial_number' => $registration->serial_number,
+                'machine_model' => $registration->machine_model,
+                'purchase_date' => $registration->purchase_date?->toDateString(),
+                'purchased_from' => $registration->purchased_from,
+                'notes' => $registration->notes,
+                'created_at' => $registration->created_at?->toDateTimeString(),
+                'updated_at' => $registration->updated_at?->toDateTimeString(),
+            ])
+            ->all();
+
+        $exportedRegistrations = var_export($registrations, true);
+        $generatedAt = now()->toDateTimeString();
+        $path = database_path('seeders/WarrantyRegistrationsSeeder.php');
+
+        File::put($path, <<<PHP
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class WarrantyRegistrationsSeeder extends Seeder
+{
+    /**
+     * Seed warranty registrations from the admin export generated at {$generatedAt}.
+     */
+    public function run(): void
+    {
+        \$registrations = {$exportedRegistrations};
+
+        foreach (\$registrations as \$registration) {
+            DB::table('warranty_registrations')->updateOrInsert(
+                ['id' => \$registration['id']],
+                \$registration
+            );
+        }
+    }
+}
+PHP);
+
+        return redirect()
+            ->route('admin.warranty-registrations.index')
+            ->with('status', 'WarrantyRegistrationsSeeder.php updated with '.count($registrations).' registration'.(count($registrations) === 1 ? '' : 's').'.');
     }
 
     public function update(Request $request, WarrantyRegistration $warrantyRegistration): RedirectResponse
