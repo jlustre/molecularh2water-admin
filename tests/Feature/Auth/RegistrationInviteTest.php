@@ -32,7 +32,7 @@ it('shows invite required message on register without a code', function () {
 
 it('opens registration form from a valid invite link', function () {
     $sponsor = sponsorUser('Pat Sponsor');
-    $invite = app(RegistrationInviteService::class)->generate($sponsor);
+    $invite = app(RegistrationInviteService::class)->generate($sponsor, $sponsor);
 
     $this->get(route('register.invite', ['code' => $invite->code]))
         ->assertOk()
@@ -49,7 +49,7 @@ it('does not show the wrong-sponsor notice without a sponsor invite', function (
 
 it('registers a member with a one-time invite and links sponsor', function () {
     $sponsor = sponsorUser();
-    $invite = app(RegistrationInviteService::class)->generate($sponsor);
+    $invite = app(RegistrationInviteService::class)->generate($sponsor, $sponsor);
 
     $component = Volt::test('pages.auth.register')
         ->set('inviteCode', $invite->code)
@@ -79,7 +79,7 @@ it('registers a member with a one-time invite and links sponsor', function () {
 
 it('rejects reusing a consumed invite code', function () {
     $sponsor = sponsorUser();
-    $invite = app(RegistrationInviteService::class)->generate($sponsor);
+    $invite = app(RegistrationInviteService::class)->generate($sponsor, $sponsor);
 
     Volt::test('pages.auth.register')
         ->set('inviteCode', $invite->code)
@@ -107,7 +107,7 @@ it('allows sponsors to generate invites in the portal', function () {
 
     Livewire::actingAs($sponsor)
         ->test(RegistrationInvites::class)
-        ->set('label', 'Team prospect')
+        ->set('sponsorUserId', $sponsor->id)
         ->call('generateInvite')
         ->assertHasNoErrors()
         ->assertSet('generatedCode', fn ($code) => is_string($code) && $code !== '')
@@ -121,7 +121,7 @@ it('allows sponsors to email an available invite', function () {
     \Illuminate\Support\Facades\Mail::fake();
 
     $sponsor = sponsorUser('Alex Sponsor');
-    $invite = app(RegistrationInviteService::class)->generate($sponsor, 'Email test');
+    $invite = app(RegistrationInviteService::class)->generate($sponsor, $sponsor);
 
     Livewire::actingAs($sponsor)
         ->test(RegistrationInvites::class)
@@ -143,7 +143,7 @@ it('allows sponsors to email an available invite', function () {
 
 it('rejects emailing a consumed invite', function () {
     $sponsor = sponsorUser();
-    $invite = app(RegistrationInviteService::class)->generate($sponsor);
+    $invite = app(RegistrationInviteService::class)->generate($sponsor, $sponsor);
     $invite->update(['consumed_at' => now()]);
 
     Livewire::actingAs($sponsor)
@@ -155,7 +155,7 @@ it('rejects emailing a consumed invite', function () {
 it('cannot email another sponsors invite', function () {
     $sponsor = sponsorUser();
     $other = sponsorUser('Other Sponsor');
-    $invite = app(RegistrationInviteService::class)->generate($other);
+    $invite = app(RegistrationInviteService::class)->generate($other, $other);
 
     expect(fn () => Livewire::actingAs($sponsor)
         ->test(RegistrationInvites::class)

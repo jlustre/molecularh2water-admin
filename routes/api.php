@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\LeadCaptureController;
 use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\MediaResourceController;
@@ -17,6 +18,10 @@ Route::prefix('resources')
         Route::get('/downloads', [MediaResourceController::class, 'downloads'])->name('downloads');
         Route::get('/embedded', [MediaResourceController::class, 'embedded'])->name('embedded');
     });
+
+Route::get('/faqs', [FaqController::class, 'index'])
+    ->middleware('throttle:60,1')
+    ->name('api.faqs.index');
 
 Route::get('/warranty-registrations/check-serial', [WarrantyRegistrationController::class, 'checkSerial'])
     ->middleware('throttle:30,1')

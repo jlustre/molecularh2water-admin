@@ -20,6 +20,7 @@ class RegistrationInvitesModal extends Component
         abort_unless(auth()->user()?->hasPermission('invites.manage'), 403);
 
         $this->resetInviteForm();
+        $this->sponsorUserId = auth()->id();
         $this->resetPage();
         $this->show = true;
     }

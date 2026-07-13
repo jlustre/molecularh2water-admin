@@ -34,7 +34,7 @@ it('renders quick link actions without a full page form', function () {
         ->assertSee('Demos')
         ->assertSee('Phone Calls')
         ->assertSee('Appointments')
-        ->assertSee('Referrals')
+        ->assertSee('Referrals/Leads')
         ->assertSeeLivewire(AppointmentsModal::class)
         ->assertSeeLivewire(ProspectsModal::class)
         ->assertSeeLivewire(DemosModal::class)

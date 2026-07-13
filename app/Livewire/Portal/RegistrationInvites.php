@@ -11,6 +11,11 @@ class RegistrationInvites extends Component
     use ManagesRegistrationInvites;
     use WithPagination;
 
+    public function mount(): void
+    {
+        $this->sponsorUserId = auth()->id();
+    }
+
     public function render()
     {
         return view('livewire.portal.registration-invites', $this->inviteViewData())

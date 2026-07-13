@@ -38,16 +38,6 @@ class ProfileAccountOverview
                 tone: 'teal',
                 icon: 'calendar',
             ),
-            new PortalDashboardCard(
-                label: 'Business Lines',
-                value: (string) count($user->resolvedBusinessLineValues()),
-                hint: implode(', ', array_map(
-                    fn (string $line) => strtoupper($line),
-                    $user->resolvedBusinessLineValues(),
-                )),
-                tone: 'indigo',
-                icon: 'layers',
-            ),
         ];
     }
 }

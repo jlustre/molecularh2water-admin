@@ -2,7 +2,33 @@ import { registerLoadingOverlays } from './loading-overlays';
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('layoutSidebar', () => ({
-        sidebarOpen: window.matchMedia('(min-width: 1024px)').matches,
+        sidebarOpen: false,
+        desktopQuery: null,
+
+        init() {
+            this.desktopQuery = window.matchMedia('(min-width: 1024px)');
+            this.syncSidebarToViewport(true);
+            this._onViewportChange = () => this.syncSidebarToViewport(false);
+            this.desktopQuery.addEventListener('change', this._onViewportChange);
+
+            this.$el.addEventListener('alpine:destroy', () => {
+                this.desktopQuery?.removeEventListener('change', this._onViewportChange);
+            });
+        },
+
+        isDesktop() {
+            return this.desktopQuery?.matches ?? window.matchMedia('(min-width: 1024px)').matches;
+        },
+
+        syncSidebarToViewport(isInitial = false) {
+            if (this.isDesktop()) {
+                if (isInitial) {
+                    this.sidebarOpen = true;
+                }
+            } else {
+                this.sidebarOpen = false;
+            }
+        },
 
         toggleSidebar() {
             this.sidebarOpen = !this.sidebarOpen;
@@ -10,6 +36,12 @@ document.addEventListener('alpine:init', () => {
 
         closeSidebar() {
             this.sidebarOpen = false;
+        },
+
+        closeSidebarOnMobile() {
+            if (! this.isDesktop()) {
+                this.sidebarOpen = false;
+            }
         },
     }));
 

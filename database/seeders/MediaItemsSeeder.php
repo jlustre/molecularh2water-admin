@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 class MediaItemsSeeder extends Seeder
 {
     /**
-     * Seed the media library from the admin export generated at 2026-06-26 11:42:11.
+     * Seed the media library from the admin export generated at 2026-07-13 03:53:55.
      */
     public function run(): void
     {
@@ -310,6 +310,7 @@ class MediaItemsSeeder extends Seeder
             );
         }
     }
+
     /**
      * @param array<int, array<string, mixed>> $mediaItems
      */

@@ -52,17 +52,23 @@
     <h3 class="text-lg font-bold text-slate-900">Generate invite</h3>
     <form class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end" wire:submit="generateInvite">
         <div class="flex-1">
-            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500" for="invite-label">Label (optional)</label>
-            <input
+            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500" for="invite-sponsor">Sponsor</label>
+            <select
                 class="mt-1 block w-full rounded-xl border-slate-200 shadow-sm focus:border-teal-500 focus:ring-teal-500"
-                id="invite-label"
-                placeholder="e.g. June team prospect"
-                type="text"
-                wire:model="label"
-            />
-            @error('label') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
+                id="invite-sponsor"
+                required
+                wire:model="sponsorUserId"
+            >
+                <option value="" disabled>Select a sponsor</option>
+                @foreach ($sponsorOptions as $sponsorOption)
+                    <option value="{{ $sponsorOption->id }}" @selected((int) ($sponsorUserId ?? auth()->id()) === (int) $sponsorOption->id)>
+                        {{ $sponsorOption->name }}
+                    </option>
+                @endforeach
+            </select>
+            @error('sponsorUserId') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
         </div>
-        <button class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-teal-600 to-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm" type="submit">
+        <button class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-teal-600 to-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50" type="submit" @disabled(! $sponsorUserId)>
             Create invite
         </button>
     </form>
@@ -77,7 +83,7 @@
             <thead class="bg-slate-50">
                 <tr>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Code</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Label</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Sponsor</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Member</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Created</th>
@@ -89,7 +95,7 @@
                     @php($inviteUrl = route('register.invite', ['code' => $invite->code]))
                     <tr>
                         <td class="px-4 py-3 font-mono text-sm font-semibold text-slate-800">{{ $invite->code }}</td>
-                        <td class="px-4 py-3 text-sm text-slate-600">{{ $invite->label ?? '—' }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600">{{ $invite->sponsor?->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-sm">
                             @if ($invite->isConsumed())
                                 <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">Used</span>

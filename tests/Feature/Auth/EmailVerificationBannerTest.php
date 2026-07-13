@@ -77,7 +77,7 @@ it('leaves newly registered invite users unverified on dashboard', function () {
     $sponsor = User::factory()->create();
     $sponsor->roles()->attach(Role::query()->where('slug', 'consultant')->first());
 
-    $invite = app(\App\Services\RegistrationInviteService::class)->generate($sponsor);
+    $invite = app(\App\Services\RegistrationInviteService::class)->generate($sponsor, $sponsor);
 
     Volt::test('pages.auth.register')
         ->set('inviteCode', $invite->code)

@@ -71,10 +71,8 @@ class CrmPermissions
             'content' => [
                 'label' => 'Content',
                 'items' => [
-                    'pages.manage' => 'Manage pages',
                     'blog.manage' => 'Manage blog',
                     'faqs.manage' => 'Manage FAQs',
-                    'testimonials.manage' => 'Manage testimonials',
                 ],
             ],
             'leads' => [
@@ -279,10 +277,8 @@ class CrmPermissions
                 'media.view',
                 'media.create',
                 'media.update',
-                'pages.manage',
                 'blog.manage',
                 'faqs.manage',
-                'testimonials.manage',
             ],
             'member' => array_values(array_unique(array_merge($consultant, [
                 'media.view',

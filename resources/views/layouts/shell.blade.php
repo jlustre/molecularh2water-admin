@@ -68,6 +68,20 @@
             padding-left: 0;
         }
 
+        @media (max-width: 1023px) {
+            :root {
+                --shell-brand-w: 9.5rem;
+            }
+
+            [data-shell-brand] {
+                width: var(--shell-brand-w);
+            }
+
+            [data-shell-brand] img {
+                height: 2.75rem;
+            }
+        }
+
         @media (min-width: 1024px) {
             [data-shell-main].is-sidebar-open {
                 padding-left: var(--shell-brand-w);

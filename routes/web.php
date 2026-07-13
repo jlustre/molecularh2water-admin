@@ -5,6 +5,7 @@ use App\Livewire\Portal\RegistrationInvites;
 use App\Livewire\Portal\Dashboard as PortalDashboard;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Admin\Dashboard;
+use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
@@ -84,10 +85,8 @@ Route::middleware(['auth', 'admin.access'])
             return view('admin.placeholders.leads');
         })->name('leads');
 
-        Route::view('/faqs', 'admin.placeholders.faqs')->name('faqs');
-        Route::view('/testimonials', 'admin.placeholders.testimonials')->name('testimonials');
         Route::view('/blog', 'admin.placeholders.blog')->name('blog');
-        Route::view('/pages', 'admin.placeholders.pages')->name('pages');
+        Route::resource('/faqs', FaqController::class)->except('show');
         Route::post('/media/update-seeder', [MediaController::class, 'updateSeeder'])->name('media.update-seeder');
         Route::get('/media/{medium}/view-pdf', [MediaController::class, 'viewPdf'])->name('media.view-pdf');
         Route::resource('/media', MediaController::class)->except('show');

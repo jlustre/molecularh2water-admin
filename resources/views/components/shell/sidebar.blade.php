@@ -48,6 +48,7 @@
                         @foreach ($sectionLinks as $link)
                             <a
                                 href="{{ $link['href'] }}"
+                                @click="$root.closeSidebarOnMobile()"
                                 @if ($link['wire_navigate']) wire:navigate @endif
                                 @if ($link['active']) aria-current="page" @endif
                                 @class([

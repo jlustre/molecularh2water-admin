@@ -11,14 +11,15 @@ use Illuminate\Support\Str;
 
 class RegistrationInviteService
 {
-    public function generate(User $sponsor, ?string $label = null): RegistrationInvite
+    public function generate(User $sponsor, User $createdBy): RegistrationInvite
     {
         $ttlDays = config('registration.invite_ttl_days', 30);
 
         return RegistrationInvite::query()->create([
             'sponsor_id' => $sponsor->id,
+            'created_by' => $createdBy->id,
             'code' => $this->uniqueCode(),
-            'label' => $label ? trim($label) : null,
+            'label' => null,
             'expires_at' => $ttlDays > 0 ? now()->addDays($ttlDays) : null,
         ]);
     }
@@ -45,7 +46,7 @@ class RegistrationInviteService
 
     public function sendByEmail(
         RegistrationInvite $invite,
-        User $sponsor,
+        User $actor,
         string $recipientEmail,
         ?string $personalMessage = null,
     ): void {
@@ -53,14 +54,15 @@ class RegistrationInviteService
             throw new \InvalidArgumentException('This invite is no longer available.');
         }
 
-        if ((int) $invite->sponsor_id !== (int) $sponsor->id) {
+        if ((int) $invite->sponsor_id !== (int) $actor->id
+            && (int) $invite->created_by !== (int) $actor->id) {
             throw new \InvalidArgumentException('You can only send invites that you created.');
         }
 
         Mail::to($recipientEmail)->send(
             new RegistrationInviteMail(
                 $invite,
-                $sponsor,
+                $invite->sponsor ?? $actor,
                 $this->inviteUrl($invite),
                 $personalMessage ? trim($personalMessage) : null,
             ),

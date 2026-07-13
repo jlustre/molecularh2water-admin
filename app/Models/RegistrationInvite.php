@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'sponsor_id',
+    'created_by',
     'code',
     'label',
     'registered_user_id',
@@ -28,6 +29,11 @@ class RegistrationInvite extends Model
     public function sponsor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'sponsor_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function registeredUser(): BelongsTo

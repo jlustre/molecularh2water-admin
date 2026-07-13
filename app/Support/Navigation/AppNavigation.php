@@ -3,6 +3,7 @@
 namespace App\Support\Navigation;
 
 use App\Models\Crm\Lead;
+use App\Models\Faq;
 use App\Models\User;
 use App\Support\Crm\CrmRoutes;
 use App\Support\Crm\CrmScope;
@@ -55,6 +56,9 @@ class AppNavigation
 
         $crmPrefix = CrmRoutes::prefixForUser($user);
         $leadCount = $user->hasPermission('leads.view') ? self::leadCountBadge() : null;
+        $faqCount = $user->hasPermission('faqs.manage') && Schema::hasTable('faqs')
+            ? Faq::query()->count()
+            : null;
 
         $definitions = [
             // Overview
@@ -94,21 +98,14 @@ class AppNavigation
 
             // Content (admin)
             [
-                'key' => 'pages',
-                'label' => 'Pages',
-                'route' => 'admin.pages',
-                'permission' => 'pages.manage',
-                'requires_admin' => true,
-                'section' => 'content',
-            ],
-            [
                 'key' => 'faqs',
                 'label' => 'FAQs',
-                'route' => 'admin.faqs',
+                'route' => 'admin.faqs.index',
+                'route_pattern' => 'admin.faqs.*',
                 'permission' => 'faqs.manage',
                 'requires_admin' => true,
                 'section' => 'content',
-                'badge' => '14',
+                'badge' => $faqCount,
             ],
             [
                 'key' => 'blog',
@@ -119,14 +116,6 @@ class AppNavigation
                 'section' => 'content',
                 'badge' => '3 New',
                 'badge_tone' => 'live',
-            ],
-            [
-                'key' => 'testimonials',
-                'label' => 'Testimonials',
-                'route' => 'admin.testimonials',
-                'permission' => 'testimonials.manage',
-                'requires_admin' => true,
-                'section' => 'content',
             ],
             [
                 'key' => 'media',

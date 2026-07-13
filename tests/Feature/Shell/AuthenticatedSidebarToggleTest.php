@@ -16,7 +16,8 @@ function assertSidebarToggle($response): void
         ->assertSee('layoutSidebar()', false)
         ->assertSee('@click="toggleSidebar()"', false)
         ->assertDontSee('lg:z-auto lg:hidden', false)
-        ->assertSee("sidebarOpen ? 'Hide sidebar' : 'Show sidebar'", false);
+        ->assertSee("sidebarOpen ? 'Hide sidebar' : 'Show sidebar'", false)
+        ->assertSee('closeSidebarOnMobile', false);
 }
 
 it('renders sidebar toggle on representative admin routes', function (string $routeName) {

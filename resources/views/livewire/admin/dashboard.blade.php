@@ -8,15 +8,10 @@
         <livewire:crm.dashboard-stats />
     @endif
 
-    <div class="mt-8 grid grid-cols-1 gap-6 md:grid-cols-4">
+    <div class="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
         <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <p class="text-sm text-slate-500">FAQs</p>
-            <h2 class="mt-2 text-3xl font-bold text-slate-900">0</h2>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p class="text-sm text-slate-500">Testimonials</p>
-            <h2 class="mt-2 text-3xl font-bold text-slate-900">0</h2>
+            <h2 class="mt-2 text-3xl font-bold text-slate-900">{{ \Illuminate\Support\Facades\Schema::hasTable('faqs') ? \App\Models\Faq::count() : 0 }}</h2>
         </div>
 
         <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

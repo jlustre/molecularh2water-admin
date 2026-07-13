@@ -5,7 +5,7 @@ namespace App\Services\Portal;
 use App\Contracts\Portal\PortalDashboardSectionProvider;
 use App\Models\User;
 use App\Support\Portal\Dashboard\PortalDashboardSection;
-use App\Support\Portal\PortalNavigation;
+use App\Support\Portal\PortalRainbowTone;
 
 class PortalDashboardService
 {
@@ -37,50 +37,23 @@ class PortalDashboardService
      */
     public function quickLinks(User $user): array
     {
-        $preferred = [
-            'admin.dashboard' => 'Admin control panel',
-        ];
-
-        $links = collect(PortalNavigation::links($user))
-            ->keyBy('route')
-            ->filter(fn (array $link) => $link['route'] !== 'dashboard');
-
-        $ordered = [];
-
-        foreach ($preferred as $route => $description) {
-            $link = $links->get($route);
-
-            if ($link) {
-                $ordered[] = [
-                    'label' => $link['label'],
-                    'route' => $link['href'],
-                    'description' => $description,
-                ];
-            }
-        }
-
-        return array_slice($ordered, 0, 6);
+        return [];
     }
 
     /**
-     * @return list<array{type: string, label: string, href?: string, navigate?: bool, action?: string, tone?: string}>
+     * @return list<array{type: string, label: string, description: string, href?: string, navigate?: bool, action?: string, tone?: string}>
      */
     public function quickActions(User $user): array
     {
-        $actions = array_map(fn (array $link) => [
-            'type' => 'link',
-            'label' => $link['label'],
-            'href' => $link['route'],
-            'description' => $link['description'],
-            'navigate' => ! str_contains($link['route'], '/admin'),
-        ], $this->quickLinks($user));
+        $actions = [];
 
         if ($user->hasPermission('invites.manage')) {
             $actions[] = [
                 'type' => 'modal',
                 'label' => 'Member Invites',
+                'description' => 'Create and share registration invite codes when you want to add a new member under your sponsorship.',
                 'action' => 'openMemberInvites',
-                'tone' => 'emerald',
+                'tone' => PortalRainbowTone::forAction('openMemberInvites'),
             ];
         }
 
@@ -88,8 +61,9 @@ class PortalDashboardService
             $actions[] = [
                 'type' => 'modal',
                 'label' => 'Prospects',
+                'description' => 'Add or update a prospect when someone shows interest and you want to track them before they become a lead or customer.',
                 'action' => 'openProspects',
-                'tone' => 'rose',
+                'tone' => PortalRainbowTone::forAction('openProspects'),
             ];
         }
 
@@ -97,8 +71,9 @@ class PortalDashboardService
             $actions[] = [
                 'type' => 'modal',
                 'label' => 'Demos',
+                'description' => 'Schedule a product or water-awareness demo when a contact is ready to see the system in action.',
                 'action' => 'openDemos',
-                'tone' => 'violet',
+                'tone' => PortalRainbowTone::forAction('openDemos'),
             ];
         }
 
@@ -106,14 +81,16 @@ class PortalDashboardService
             $actions[] = [
                 'type' => 'modal',
                 'label' => 'Phone Calls',
+                'description' => 'Log or schedule a phone call for follow-ups, check-ins, and outreach you need to complete by phone.',
                 'action' => 'openPhoneCalls',
-                'tone' => 'blue',
+                'tone' => PortalRainbowTone::forAction('openPhoneCalls'),
             ];
             $actions[] = [
                 'type' => 'modal',
                 'label' => 'Meetings',
+                'description' => 'Book an in-person or online meeting when you need a longer conversation, planning session, or team discussion.',
                 'action' => 'openMeetings',
-                'tone' => 'indigo',
+                'tone' => PortalRainbowTone::forAction('openMeetings'),
             ];
         }
 
@@ -121,8 +98,9 @@ class PortalDashboardService
             $actions[] = [
                 'type' => 'modal',
                 'label' => 'Appointments',
+                'description' => 'Set an appointment when a contact has a confirmed date and time for a visit, consultation, or delivery.',
                 'action' => 'openAppointments',
-                'tone' => 'cyan',
+                'tone' => PortalRainbowTone::forAction('openAppointments'),
             ];
         }
 
@@ -130,17 +108,19 @@ class PortalDashboardService
             $actions[] = [
                 'type' => 'modal',
                 'label' => 'Tasks',
+                'description' => 'Create a personal or CRM task for reminders, to-dos, and action items you do not want to forget.',
                 'action' => 'openTasks',
-                'tone' => 'amber',
+                'tone' => PortalRainbowTone::forAction('openTasks'),
             ];
         }
 
         if ($user->hasPermission('clients.view')) {
             $actions[] = [
                 'type' => 'modal',
-                'label' => 'Referrals',
+                'label' => 'Referrals/Leads',
+                'description' => 'Record a referral or lead introduction when a client or contact brings someone new, so you can track credit and follow-up.',
                 'action' => 'openReferrals',
-                'tone' => 'orange',
+                'tone' => PortalRainbowTone::forAction('openReferrals'),
             ];
         }
 

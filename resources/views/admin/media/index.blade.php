@@ -5,10 +5,9 @@
         'documents' => 'PDF, DOCX, brochures',
         'videos' => 'Training, testimonials',
         'links' => 'Studies, references, URLs',
-        'images' => 'Products, banners, icons',
-        'downloads' => 'Downloadable files',
-        'embedded' => 'Embeds and resources',
     ];
+
+    $statCategories = collect($categories)->only(['documents', 'videos', 'links']);
 
     $statusClasses = [
         'published' => 'bg-emerald-50 text-emerald-700',
@@ -65,8 +64,8 @@
             </div>
         </section>
 
-        <section class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            @foreach ($categories as $value => $label)
+        <section class="grid gap-5 md:grid-cols-3">
+            @foreach ($statCategories as $value => $label)
                 @php $count = (int) ($categoryCounts[$value] ?? 0); @endphp
                 <a href="{{ route('admin.media.index', ['category' => $value]) }}" class="rounded-lg border border-teal-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md">
                     <div class="flex items-start justify-between gap-4">

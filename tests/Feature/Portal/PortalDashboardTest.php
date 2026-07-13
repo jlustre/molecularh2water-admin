@@ -39,7 +39,7 @@ it('renders role-aware member dashboard stats', function () {
         'url' => 'https://example.com/guide.pdf',
     ]);
 
-    $invite = app(RegistrationInviteService::class)->generate($member);
+    $invite = app(RegistrationInviteService::class)->generate($member, $member);
 
     $html = $this->actingAs($member)
         ->get(route('dashboard'))
@@ -49,9 +49,8 @@ it('renders role-aware member dashboard stats', function () {
         ->assertDontSee('Resources Library')
         ->assertSee('Network & Growth')
         ->assertSee('Team Members')
-        ->assertSee('Active Invites')
-        ->assertSee('Quick Links')
         ->assertSee('Member Invites')
+        ->assertSee('Quick Links')
         ->assertSee('Demos')
         ->assertSee('My CRM Snapshot')
         ->getContent();

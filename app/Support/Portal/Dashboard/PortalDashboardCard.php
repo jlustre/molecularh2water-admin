@@ -11,5 +11,6 @@ readonly class PortalDashboardCard
         public ?string $route = null,
         public string $tone = 'teal',
         public ?string $icon = null,
+        public ?string $action = null,
     ) {}
 }

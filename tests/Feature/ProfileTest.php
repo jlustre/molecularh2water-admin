@@ -12,7 +12,11 @@ beforeEach(function () {
 });
 
 test('profile page is displayed', function () {
-    $user = User::factory()->create();
+    $sponsor = User::factory()->create(['name' => 'Pat Sponsor']);
+    $user = User::factory()->create([
+        'sponsor_id' => $sponsor->id,
+        'business_lines' => ['h2s', 'hcc'],
+    ]);
     $user->roles()->attach(Role::query()->where('slug', 'member')->first());
 
     $this->actingAs($user);
@@ -27,7 +31,11 @@ test('profile page is displayed', function () {
         ->assertSee('images/favicon.png', false)
         ->assertSee('Account Overview')
         ->assertSee('Email Status')
+        ->assertSee('Sponsor')
+        ->assertSee('Pat Sponsor')
         ->assertSee('Business Lines')
+        ->assertSee('HappyCookingCo')
+        ->assertSee('H2S')
         ->assertSee('Security Notes')
         ->assertDontSee('Danger Zone')
         ->assertSeeVolt('profile.update-profile-information-form')

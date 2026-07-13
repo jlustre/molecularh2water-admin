@@ -1,7 +1,9 @@
 @php
+    use App\Enums\BusinessLine;
     use App\Support\Portal\ProfileAccountOverview;
 
     $user = auth()->user();
+    $user?->loadMissing('sponsor');
     $userName = $user?->name ?? 'Member';
     $userEmail = $user?->email ?? '';
     $initials = collect(explode(' ', trim($userName)))
@@ -15,6 +17,8 @@
     $canDeleteAccount = $user?->hasRole('super-admin') ?? false;
     $avatarUrl = $user?->avatarUrl();
     $accountCards = $user ? ProfileAccountOverview::cards($user) : [];
+    $sponsorName = $user?->sponsor?->name;
+    $businessLines = BusinessLine::assignableCases();
 @endphp
 
 @extends('layouts.portal')
@@ -54,6 +58,46 @@
                                         <span class="rounded-full bg-slate-100/10 px-3 py-1 text-xs font-bold text-teal-100 ring-1 ring-teal-200/20">Member</span>
                                     @endforelse
                                 </div>
+                            </div>
+
+                            <div class="rounded-lg border border-teal-200/[0.14] bg-white/[0.05] p-4">
+                                <p class="text-xs font-bold uppercase tracking-[0.18em] text-teal-200/55">Sponsor</p>
+                                <p class="mt-3 text-sm font-bold text-white">
+                                    {{ $sponsorName ?? ($canDeleteAccount ? 'None' : 'Unassigned') }}
+                                </p>
+                                @if ($user?->sponsor?->email)
+                                    <p class="mt-1 truncate text-xs font-semibold text-teal-100/55">{{ $user->sponsor->email }}</p>
+                                @endif
+                            </div>
+
+                            <div class="rounded-lg border border-teal-200/[0.14] bg-white/[0.05] p-4">
+                                <p class="text-xs font-bold uppercase tracking-[0.18em] text-teal-200/55">Business Lines</p>
+                                <ul class="mt-3 space-y-2.5">
+                                    @foreach ($businessLines as $line)
+                                        @php $active = $user?->participatesInBusinessLine($line) ?? false; @endphp
+                                        <li class="flex items-center gap-3">
+                                            <span @class([
+                                                'flex size-5 shrink-0 items-center justify-center rounded border',
+                                                'border-emerald-300/50 bg-emerald-400/20 text-emerald-300' => $active,
+                                                'border-teal-200/25 bg-white/[0.04] text-transparent' => ! $active,
+                                            ])>
+                                                @if ($active)
+                                                    <svg class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7"/>
+                                                    </svg>
+                                                @endif
+                                            </span>
+                                            <span @class([
+                                                'text-sm font-bold',
+                                                'text-white' => $active,
+                                                'text-teal-100/45' => ! $active,
+                                            ])>
+                                                {{ $line->label() }}
+                                                <span class="font-semibold text-teal-100/45">({{ $line->shortLabel() }})</span>
+                                            </span>
+                                        </li>
+                                    @endforeach
+                                </ul>
                             </div>
 
                             @if ($accountCards !== [])

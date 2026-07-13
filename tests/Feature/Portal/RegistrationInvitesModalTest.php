@@ -38,7 +38,7 @@ it('opens the modal and generates invites with the same functionality as the pag
         ->assertSet('show', true)
         ->assertSee('Generate invite')
         ->assertSee('Your invites')
-        ->set('label', 'Modal prospect')
+        ->set('sponsorUserId', $sponsor->id)
         ->call('generateInvite')
         ->assertHasNoErrors()
         ->assertSee('Email invite')
@@ -53,8 +53,8 @@ it('closes the modal and resets state', function () {
     Livewire::actingAs($sponsor)
         ->test(RegistrationInvitesModal::class)
         ->call('open')
-        ->set('label', 'Temporary')
+        ->assertSet('sponsorUserId', $sponsor->id)
         ->call('close')
         ->assertSet('show', false)
-        ->assertSet('label', '');
+        ->assertSet('sponsorUserId', $sponsor->id);
 });

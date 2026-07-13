@@ -3,12 +3,13 @@
 namespace App\Livewire\Portal\Concerns;
 
 use App\Models\RegistrationInvite;
+use App\Services\InviteSponsorScopeService;
 use App\Services\RegistrationInviteService;
 use Illuminate\Validation\ValidationException;
 
 trait ManagesRegistrationInvites
 {
-    public string $label = '';
+    public ?int $sponsorUserId = null;
 
     public ?string $generatedUrl = null;
 
@@ -22,19 +23,21 @@ trait ManagesRegistrationInvites
 
     public string $emailMessage = '';
 
-    public function generateInvite(RegistrationInviteService $invites): void
+    public function generateInvite(RegistrationInviteService $invites, InviteSponsorScopeService $sponsors): void
     {
-        abort_unless(auth()->user()?->hasPermission('invites.manage'), 403);
+        $actor = auth()->user();
+        abort_unless($actor?->hasPermission('invites.manage'), 403);
 
         $this->validate([
-            'label' => ['nullable', 'string', 'max:120'],
+            'sponsorUserId' => ['required', 'integer', 'exists:users,id'],
         ]);
 
-        $invite = $invites->generate(auth()->user(), $this->label ?: null);
+        $sponsor = $sponsors->assertInScope($actor, (int) $this->sponsorUserId);
+        $invite = $invites->generate($sponsor, $actor);
 
         $this->generatedUrl = $invites->inviteUrl($invite);
         $this->generatedCode = $invite->code;
-        $this->label = '';
+        $this->sponsorUserId = $actor->id;
         $this->resetPage();
         session()->flash('invite_status', 'Registration invite created.');
         $this->dispatch('invite-created');
@@ -96,22 +99,31 @@ trait ManagesRegistrationInvites
     }
 
     /**
-     * @return array{invites: \Illuminate\Contracts\Pagination\LengthAwarePaginator}
+     * @return array{
+     *     invites: \Illuminate\Contracts\Pagination\LengthAwarePaginator,
+     *     sponsorOptions: \Illuminate\Support\Collection<int, \App\Models\User>
+     * }
      */
     protected function inviteViewData(): array
     {
+        $user = auth()->user();
+
         return [
             'invites' => RegistrationInvite::query()
-                ->where('sponsor_id', auth()->id())
-                ->with('registeredUser:id,name,email')
+                ->where(function ($query) use ($user) {
+                    $query->where('created_by', $user->id)
+                        ->orWhere('sponsor_id', $user->id);
+                })
+                ->with(['sponsor:id,name', 'registeredUser:id,name,email'])
                 ->latest()
                 ->paginate(10),
+            'sponsorOptions' => app(InviteSponsorScopeService::class)->optionsFor($user),
         ];
     }
 
     protected function resetInviteForm(): void
     {
-        $this->label = '';
+        $this->sponsorUserId = auth()->id();
         $this->generatedUrl = null;
         $this->generatedCode = null;
         $this->closeEmailModal();
@@ -121,7 +133,10 @@ trait ManagesRegistrationInvites
     private function ownedInvite(int $inviteId): RegistrationInvite
     {
         return RegistrationInvite::query()
-            ->where('sponsor_id', auth()->id())
+            ->where(function ($query) {
+                $query->where('created_by', auth()->id())
+                    ->orWhere('sponsor_id', auth()->id());
+            })
             ->whereKey($inviteId)
             ->firstOrFail();
     }
@@ -133,7 +148,10 @@ trait ManagesRegistrationInvites
         }
 
         return RegistrationInvite::query()
-            ->where('sponsor_id', auth()->id())
+            ->where(function ($query) {
+                $query->where('created_by', auth()->id())
+                    ->orWhere('sponsor_id', auth()->id());
+            })
             ->where('code', $code)
             ->firstOrFail();
     }
