@@ -250,7 +250,7 @@ class CalendarQueryService
                 $q->where('related_type', Lead::class)->where('related_id', $leadId);
             })
             ->when($filters['funnel_stage_id'] ?? null, function ($q, $stageId) {
-                $q->where('related_type', FunnelStage::class)->where('related_id', $stageId);
+                $q->where('related_type', (new FunnelStage)->getMorphClass())->where('related_id', $stageId);
             })
             ->orderBy('start_at')
             ->get()

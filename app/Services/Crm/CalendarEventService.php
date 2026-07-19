@@ -327,7 +327,7 @@ class CalendarEventService
         }
 
         if ($stageId = Arr::get($data, 'funnel_stage_id')) {
-            return ['type' => FunnelStage::class, 'id' => (int) $stageId];
+            return ['type' => (new FunnelStage)->getMorphClass(), 'id' => (int) $stageId];
         }
 
         // Explicit related_type/related_id (including null) means the caller cleared the link.

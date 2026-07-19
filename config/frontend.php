@@ -37,4 +37,6 @@ return [
 
     'warranty_path' => '/warranty',
 
+    'installation_path' => '/installation',
+
 ];

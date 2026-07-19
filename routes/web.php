@@ -6,6 +6,7 @@ use App\Livewire\Portal\Dashboard as PortalDashboard;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Admin\Dashboard;
 use App\Http\Controllers\Admin\FaqController;
+use App\Http\Controllers\Admin\InstallationQuestionnaireController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
@@ -110,6 +111,8 @@ Route::middleware(['auth', 'admin.access'])
         Route::post('/warranty-registrations/update-seeder', [WarrantyRegistrationController::class, 'updateSeeder'])
             ->name('warranty-registrations.update-seeder');
         Route::resource('/warranty-registrations', WarrantyRegistrationController::class)
+            ->except(['create', 'store']);
+        Route::resource('/installation-questionnaires', InstallationQuestionnaireController::class)
             ->except(['create', 'store']);
         Route::post('/users/update-seeder', [UserController::class, 'updateSeeder'])
             ->middleware('permission:users.export')

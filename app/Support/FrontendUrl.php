@@ -21,6 +21,11 @@ class FrontendUrl
         return self::path((string) config('frontend.warranty_path', '/warranty'));
     }
 
+    public static function installationQuestionnaire(): string
+    {
+        return self::path((string) config('frontend.installation_path', '/installation'));
+    }
+
     public static function environmentLabel(): string
     {
         return (string) config('frontend.environment_label', 'Production');

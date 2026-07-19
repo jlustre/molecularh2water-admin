@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\Crm\Customer;
+use App\Models\Crm\Funnel;
+use App\Models\Crm\FunnelStage;
 use App\Models\Crm\Lead;
 use App\Models\Crm\Prospect;
 use App\Models\Crm\Recruit;
@@ -45,6 +47,8 @@ class AppServiceProvider extends ServiceProvider
             'customer' => Customer::class,
             'recruit' => Recruit::class,
             'user' => User::class,
+            'funnel' => Funnel::class,
+            'funnel_stage' => FunnelStage::class,
         ]);
 
         foreach ([Lead::class, Prospect::class, Customer::class, Recruit::class] as $model) {

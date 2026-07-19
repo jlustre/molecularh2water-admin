@@ -1,4 +1,4 @@
-<div>
+<div class="space-y-4">
 @include('livewire.crm.calendar.partials.widgets', [
     'upcoming' => $upcoming,
     'callListsToday' => $callListsToday,

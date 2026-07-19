@@ -276,6 +276,15 @@ class AppNavigation
                 'requires_admin' => true,
                 'section' => 'engagement',
             ],
+            [
+                'key' => 'installation-questionnaires',
+                'label' => 'Installation Questionnaires',
+                'route' => 'admin.installation-questionnaires.index',
+                'route_pattern' => 'admin.installation-questionnaires.*',
+                'permission' => null,
+                'requires_admin' => true,
+                'section' => 'engagement',
+            ],
 
             // System
             [

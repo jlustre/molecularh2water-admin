@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\FaqController;
+use App\Http\Controllers\Api\InstallationQuestionnaireController;
 use App\Http\Controllers\Api\LeadCaptureController;
 use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\MediaResourceController;
@@ -30,6 +31,10 @@ Route::get('/warranty-registrations/check-serial', [WarrantyRegistrationControll
 Route::post('/warranty-registrations', [WarrantyRegistrationController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('api.warranty-registrations.store');
+
+Route::post('/installation-questionnaires', [InstallationQuestionnaireController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('api.installation-questionnaires.store');
 
 Route::post('/prospects', [ProspectController::class, 'store'])
     ->middleware('throttle:10,1')
