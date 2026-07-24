@@ -65,7 +65,7 @@ class ProspectsModal extends Component
 
         $this->resetForm();
         $this->dispatch('prospect-created');
-        session()->flash('prospect_status', 'Prospect added to your list.');
+        session()->flash('prospect_status', 'Lead added to your pipeline.');
     }
 
     public function render(PortalProspectService $prospects)

@@ -3,7 +3,9 @@
 namespace App\Livewire\Crm\Calendar;
 
 use App\Models\Crm\CalendarEvent;
+use App\Models\Crm\CalendarEventType;
 use App\Models\Crm\Task;
+use App\Services\Crm\CalendarEventService;
 use App\Services\Crm\CalendarQueryService;
 use App\Services\Crm\TaskService;
 use App\Services\Portal\PhoneCallService;
@@ -11,6 +13,7 @@ use App\Support\Crm\CalendarScope;
 use App\Support\Crm\CrmScope;
 use App\Support\Portal\PhoneCallReasons;
 use App\Support\Portal\PhoneCallResults;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Isolate;
@@ -48,6 +51,28 @@ class CalendarWidgets extends Component
     public string $reschedule_notes = '';
 
     public string $results_contact_type = 'prospect';
+
+    public ?string $createModal = null;
+
+    public string $create_title = '';
+
+    public ?int $create_type_id = null;
+
+    public string $create_start_at = '';
+
+    public string $create_location = '';
+
+    public string $create_contact_name = '';
+
+    public string $create_phone = '';
+
+    public string $create_reason = 'general_follow_up';
+
+    public string $create_notes = '';
+
+    public string $create_task_title = '';
+
+    public string $create_due_at = '';
 
     public function mount(array $filters = [], bool $canManage = false): void
     {
@@ -171,6 +196,82 @@ class CalendarWidgets extends Component
         $this->resetResults();
     }
 
+    public function openCreateModal(string $type): void
+    {
+        abort_unless($this->canManage, 403);
+        abort_unless(in_array($type, ['show', 'call', 'followup', 'task'], true), 404);
+
+        $this->resetCreateForm();
+        $this->createModal = $type;
+
+        $now = now();
+
+        if ($type === 'show') {
+            $this->create_title = 'Water Awareness Show';
+            $this->create_start_at = $now->copy()->addDay()->setTime(18, 0)->format('Y-m-d\TH:i');
+            $this->create_type_id = CalendarEventType::query()
+                ->whereIn('slug', ['water-awareness-show', 'home-demo', 'product-demo', 'cooking-show'])
+                ->orderBy('sort_order')
+                ->value('id');
+        }
+
+        if ($type === 'call') {
+            $this->create_contact_name = '';
+            $this->create_phone = '';
+            $this->create_reason = 'general_follow_up';
+            $this->create_start_at = $now->copy()->addHour()->minute(0)->format('Y-m-d\TH:i');
+        }
+
+        if ($type === 'followup') {
+            $this->create_contact_name = '';
+            $this->create_phone = '';
+            $this->create_reason = 'general_follow_up';
+            $this->create_start_at = $now->copy()->subDay()->setTime(10, 0)->format('Y-m-d\TH:i');
+        }
+
+        if ($type === 'task') {
+            $this->create_task_title = '';
+            $this->create_due_at = $now->copy()->setTime(17, 0)->format('Y-m-d\TH:i');
+        }
+    }
+
+    public function closeCreateModal(): void
+    {
+        $this->resetCreateForm();
+    }
+
+    public function saveCreateModal(
+        CalendarEventService $events,
+        PhoneCallService $phoneCalls,
+        TaskService $tasks,
+    ): void {
+        abort_unless($this->canManage, 403);
+        abort_unless($this->createModal, 404);
+
+        $actor = Auth::user();
+        abort_unless($actor, 403);
+
+        match ($this->createModal) {
+            'show' => $this->saveShow($events, $actor),
+            'call' => $this->saveCall($phoneCalls, $actor, overdue: false),
+            'followup' => $this->saveCall($phoneCalls, $actor, overdue: true),
+            'task' => $this->saveTask($tasks, $actor),
+            default => null,
+        };
+
+        $message = match ($this->createModal) {
+            'show' => 'Show/demo scheduled.',
+            'call' => 'Phone call added to today\'s list.',
+            'followup' => 'Follow-up call added.',
+            'task' => 'Task created.',
+            default => 'Saved.',
+        };
+
+        $this->resetCreateForm();
+        $this->dispatch('calendar-status', message: $message);
+        $this->dispatch('calendar-updated');
+    }
+
     public function render(CalendarQueryService $calendar)
     {
         $user = auth()->user();
@@ -179,11 +280,93 @@ class CalendarWidgets extends Component
             'upcoming' => $calendar->upcomingShowsAndDemos(6, $user, $this->filters),
             'callListsToday' => $calendar->phoneCallsToday($user),
             'overdueFollowUps' => $calendar->overdueFollowUps($user),
-            'tasksDueToday' => $calendar->tasksDueToday(),
+            'tasksDueToday' => $calendar->tasksDueToday($user),
             'typeColors' => config('calendar.type_colors', []),
             'resultOptions' => PhoneCallResults::options(),
             'rescheduleReasonOptions' => PhoneCallReasons::forContactKind($this->results_contact_type),
+            'showDemoTypes' => CalendarEventType::query()
+                ->whereIn('slug', ['water-awareness-show', 'home-demo', 'product-demo', 'cooking-show'])
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get(['id', 'name', 'slug']),
+            'callReasonOptions' => PhoneCallReasons::forContactKind('other'),
         ]);
+    }
+
+    private function saveShow(CalendarEventService $events, $actor): void
+    {
+        abort_unless($actor->hasPermission('calendar.manage'), 403);
+
+        $validated = $this->validate([
+            'create_title' => ['required', 'string', 'max:255'],
+            'create_type_id' => ['required', 'integer', 'exists:calendar_event_types,id'],
+            'create_start_at' => ['required', 'date'],
+            'create_location' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $start = Carbon::parse($validated['create_start_at']);
+
+        $events->create([
+            'calendar_event_type_id' => $validated['create_type_id'],
+            'title' => $validated['create_title'],
+            'start_at' => $start,
+            'end_at' => $start->copy()->addHour(),
+            'location' => $validated['create_location'] ?: null,
+            'reminder_minutes' => [60, 15],
+        ], $actor);
+    }
+
+    private function saveCall(PhoneCallService $phoneCalls, $actor, bool $overdue): void
+    {
+        abort_unless($actor->hasPermission('calendar.manage'), 403);
+
+        $validated = $this->validate([
+            'create_contact_name' => ['required', 'string', 'max:255'],
+            'create_phone' => ['nullable', 'string', 'max:50'],
+            'create_reason' => ['required', Rule::in(PhoneCallReasons::values())],
+            'create_start_at' => ['required', 'date'],
+            'create_notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $start = Carbon::parse($validated['create_start_at']);
+
+        if (! $overdue && $start->isToday() === false) {
+            $start = now()->setTimeFromTimeString($start->format('H:i:s'));
+            if ($start->lt(now())) {
+                $start = now()->addMinutes(30);
+            }
+        }
+
+        $phoneCalls->schedule([
+            'contact_kind' => 'other',
+            'other_name' => $validated['create_contact_name'],
+            'phone_number' => $validated['create_phone'] ?: null,
+            'call_reason' => $validated['create_reason'],
+            'call_when' => 'custom',
+            'call_date' => $start->toDateString(),
+            'call_time' => $start->format('H:i'),
+            'notes' => $validated['create_notes'] ?: null,
+        ], $actor);
+    }
+
+    private function saveTask(TaskService $tasks, $actor): void
+    {
+        abort_unless($actor->hasPermission('tasks.manage'), 403);
+
+        $validated = $this->validate([
+            'create_task_title' => ['required', 'string', 'max:255'],
+            'create_due_at' => ['required', 'date'],
+            'create_notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $tasks->create([
+            'title' => $validated['create_task_title'],
+            'description' => $validated['create_notes'] ?: null,
+            'due_at' => Carbon::parse($validated['create_due_at']),
+            'status' => 'pending',
+            'priority' => 'normal',
+            'user_id' => $actor->id,
+        ], $actor);
     }
 
     private function findPhoneCallEvent(int $eventId): CalendarEvent
@@ -211,5 +394,21 @@ class CalendarWidgets extends Component
         $this->reschedule_reason = 'general_follow_up';
         $this->reschedule_notes = '';
         $this->results_contact_type = 'prospect';
+    }
+
+    private function resetCreateForm(): void
+    {
+        $this->createModal = null;
+        $this->create_title = '';
+        $this->create_type_id = null;
+        $this->create_start_at = '';
+        $this->create_location = '';
+        $this->create_contact_name = '';
+        $this->create_phone = '';
+        $this->create_reason = 'general_follow_up';
+        $this->create_notes = '';
+        $this->create_task_title = '';
+        $this->create_due_at = '';
+        $this->resetValidation();
     }
 }

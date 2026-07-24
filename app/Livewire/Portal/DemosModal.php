@@ -3,6 +3,10 @@
 namespace App\Livewire\Portal;
 
 use App\Enums\Crm\DemonstrationType;
+use App\Models\Crm\Customer;
+use App\Models\Crm\Lead;
+use App\Models\Crm\Prospect;
+use App\Models\Crm\Recruit;
 use App\Services\Portal\PortalDemoService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -169,7 +173,7 @@ class DemosModal extends Component
         $this->lead_id = $lead->id;
         $this->contact_search = $lead->fullName();
         $this->contact_email = (string) ($lead->email ?? '');
-        $this->finalizeSchedule($demos, keepProspectForm: false);
+        $this->finalizeSchedule($demos, keepProspectForm: false, contact: $lead);
     }
 
     public function render(PortalDemoService $demos)
@@ -200,10 +204,14 @@ class DemosModal extends Component
         ];
     }
 
-    private function finalizeSchedule(PortalDemoService $demos, bool $keepProspectForm = false): void
-    {
+    private function finalizeSchedule(
+        PortalDemoService $demos,
+        bool $keepProspectForm = false,
+        Lead|Prospect|Customer|Recruit|null $contact = null,
+    ): void {
         $demos->schedule([
             'lead_id' => (int) $this->lead_id,
+            'contact_type' => $contact?->getMorphClass(),
             'type' => $this->demo_type,
             'demo_when' => $this->demo_when,
             'duration_minutes' => $this->duration_minutes,

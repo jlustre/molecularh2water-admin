@@ -98,6 +98,8 @@ class MediaController extends Controller
 
     public function updateSeeder(): RedirectResponse
     {
+        abort_unless(auth()->user()?->isSuperAdmin(), 403);
+
         $mediaItems = MediaItem::query()
             ->orderBy('id')
             ->get([

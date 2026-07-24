@@ -37,7 +37,7 @@
                                                 <span class="font-medium text-slate-700">{{ $stage->name }}</span>
                                                 <div class="flex shrink-0 items-center gap-1.5">
                                                     <span class="text-slate-500">{{ $stage->leads_count }}</span>
-                                                    @if ($stage->leads_count > 0)
+                                                    @if ($stage->leads_count > 0 && ($pipelineInteractive ?? true))
                                                         <button
                                                             type="button"
                                                             wire:click="$dispatch('open-pipeline-stage-leads', { stageId: {{ $stage->id }} })"
@@ -96,7 +96,7 @@
                             @endif
                         </div>
                     @empty
-                        <p class="text-sm text-slate-500">No upcoming shows, demos, or meetings on your calendar.</p>
+                        <p class="text-sm text-slate-500">{{ $eventsEmptyMessage ?? 'No upcoming shows, demos, or meetings on your calendar.' }}</p>
                     @endforelse
                 </div>
             </div>
@@ -124,7 +124,7 @@
                             @endif
                         </div>
                     @empty
-                        <p class="text-sm text-slate-500">No upcoming calls, invites, or follow-up tasks scheduled.</p>
+                        <p class="text-sm text-slate-500">{{ $tasksEmptyMessage ?? 'No upcoming calls, invites, or follow-up tasks scheduled.' }}</p>
                     @endforelse
                 </div>
             </div>

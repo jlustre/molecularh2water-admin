@@ -1,14 +1,22 @@
 <?php
 
+use App\Enums\NotifiableForm;
 use App\Mail\InstallationQuestionnaireSubmitted;
+use App\Models\EmailMapping;
 use App\Models\InstallationQuestionnaire;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
-it('stores an installation questionnaire and emails shipping', function () {
+it('stores an installation questionnaire and emails mapped recipients', function () {
     Mail::fake();
     Storage::fake('public');
+
+    EmailMapping::factory()->create([
+        'form_key' => NotifiableForm::InstallationQuestionnaire,
+        'email' => 'shipping@happycooking.com',
+        'is_active' => true,
+    ]);
 
     $payload = [
         'first_name' => 'Alex',
@@ -29,7 +37,10 @@ it('stores an installation questionnaire and emails shipping', function () {
         'water_source' => 'Municipal (connected to the city)',
         'special_requirements' => 'Need weekend install.',
         'additional_notes' => 'Gate code 1234',
-        'sink_photo' => UploadedFile::fake()->image('sink.jpg'),
+        'sink_photos' => [
+            UploadedFile::fake()->image('sink-1.jpg'),
+            UploadedFile::fake()->image('sink-2.jpg'),
+        ],
     ];
 
     $this->post('/api/installation-questionnaires', $payload, [
@@ -44,9 +55,12 @@ it('stores an installation questionnaire and emails shipping', function () {
         ->and($questionnaire->first_name)->toBe('Alex')
         ->and($questionnaire->last_name)->toBe('Buyer')
         ->and($questionnaire->existing_equipment)->toBe(['Water Softener'])
-        ->and($questionnaire->sink_photo_path)->not->toBeNull();
+        ->and($questionnaire->sink_photo_path)->not->toBeNull()
+        ->and($questionnaire->sinkPhotoItems())->toHaveCount(2);
 
-    Storage::disk('public')->assertExists($questionnaire->sink_photo_path);
+    foreach ($questionnaire->sinkPhotoItems() as $photo) {
+        Storage::disk('public')->assertExists($photo['path']);
+    }
 
     Mail::assertSent(InstallationQuestionnaireSubmitted::class, function (InstallationQuestionnaireSubmitted $mail) {
         return $mail->hasTo('shipping@happycooking.com')

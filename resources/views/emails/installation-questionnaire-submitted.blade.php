@@ -42,9 +42,11 @@
                                         ),
                                         'Special Requirements' => nl2br(e($questionnaire->special_requirements ?: 'None')),
                                         'Additional Notes' => nl2br(e($questionnaire->additional_notes ?: 'None')),
-                                        'Sink Photo' => e(
-                                            $questionnaire->sink_photo_path
-                                                ? ($questionnaire->sink_photo_original_name ?: 'Attached')
+                                        'Sink Photos' => e(
+                                            $questionnaire->hasSinkPhotos()
+                                                ? collect($questionnaire->sinkPhotoItems())
+                                                    ->map(fn ($photo, $index) => $photo['original_name'] ?: 'Photo '.($index + 1))
+                                                    ->implode(', ')
                                                 : 'Not provided'
                                         ),
                                         'Submitted' => e($questionnaire->created_at?->timezone(config('app.timezone'))->format('F j, Y g:i A T')),
@@ -61,7 +63,7 @@
                     </tr>
                     <tr>
                         <td style="padding:20px 32px;background-color:#f8fffe;border-top:1px solid #d7f3ef;font-size:12px;line-height:1.6;color:#64748b;">
-                            H2Systems · Molecular Hydrogen Water · shipping@happycooking.com
+                            H2Systems · Molecular Hydrogen Water · Pre-Installation Questionnaire
                         </td>
                     </tr>
                 </table>

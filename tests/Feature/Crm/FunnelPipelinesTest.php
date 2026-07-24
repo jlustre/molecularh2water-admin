@@ -45,8 +45,7 @@ it('loads recruiting funnel stages on the pipeline board', function () {
         ->orderBy('sort_order')
         ->first();
 
-    $lead = Lead::factory()->assignedTo($agent)->create([
-        'lifecycle' => LeadLifecycle::Recruit,
+    $recruit = \App\Models\Crm\Recruit::factory()->assignedTo($agent)->create([
         'funnel_id' => $recruitingFunnel->id,
         'funnel_stage_id' => $firstStage->id,
         'first_name' => 'Recruit',
@@ -79,7 +78,10 @@ it('records pipeline history when lead form changes funnel stage', function () {
         ->assertHasNoErrors();
 
     expect($lead->fresh()->stage?->slug)->toBe('contacted')
-        ->and(PipelineStageHistory::query()->where('lead_id', $lead->id)->count())->toBe(1);
+        ->and(PipelineStageHistory::query()
+            ->where('contact_type', 'lead')
+            ->where('contact_id', $lead->id)
+            ->count())->toBe(1);
 });
 
 it('defaults recruits to the recruiting funnel on create', function () {
@@ -97,9 +99,10 @@ it('defaults recruits to the recruiting funnel on create', function () {
         ->call('save')
         ->assertHasNoErrors();
 
-    $lead = Lead::query()->where('email', 'recruit@example.com')->first();
+    $lead = \App\Models\Crm\Recruit::query()->where('email', 'recruit@example.com')->first();
 
-    expect($lead->funnel?->slug)->toBe('recruiting-funnel')
+    expect($lead)->not->toBeNull()
+        ->and($lead->funnel?->slug)->toBe('recruiting-funnel')
         ->and($lead->stage?->slug)->toBe('prospecting');
 });
 

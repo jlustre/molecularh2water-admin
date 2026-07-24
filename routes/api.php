@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\LeadCaptureController;
 use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\MediaResourceController;
 use App\Http\Controllers\Api\ProspectController;
+use App\Http\Controllers\Api\SiteSettingsController;
 use App\Http\Controllers\Api\WarrantyRegistrationController;
 use Illuminate\Support\Facades\Route;
 
@@ -23,6 +24,10 @@ Route::prefix('resources')
 Route::get('/faqs', [FaqController::class, 'index'])
     ->middleware('throttle:60,1')
     ->name('api.faqs.index');
+
+Route::get('/site-settings', SiteSettingsController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.site-settings.show');
 
 Route::get('/warranty-registrations/check-serial', [WarrantyRegistrationController::class, 'checkSerial'])
     ->middleware('throttle:30,1')

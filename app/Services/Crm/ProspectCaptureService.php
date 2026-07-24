@@ -4,6 +4,8 @@ namespace App\Services\Crm;
 
 use App\Enums\Crm\LeadLifecycle;
 use App\Enums\Crm\LeadTemperature;
+use App\Enums\WebsiteFormSubmissionStatus;
+use App\Enums\WebsiteFormType;
 use App\Models\Crm\Funnel;
 use App\Models\Crm\FunnelStage;
 use App\Models\Crm\LandingPage;
@@ -12,7 +14,9 @@ use App\Models\Crm\LeadSource;
 use App\Models\Crm\Lifecycle;
 use App\Models\Crm\Prospect;
 use App\Models\User;
+use App\Models\WebsiteFormSubmission;
 use App\Notifications\Crm\CrmLeadCapturedNotification;
+use App\Services\EmailMappingService;
 use App\Support\Crm\CrmContactResolver;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -23,12 +27,13 @@ class ProspectCaptureService
     public function __construct(
         private readonly TimelineService $timeline,
         private readonly LeadAssignmentService $assignment,
+        private readonly EmailMappingService $emailMappings,
     ) {}
 
     /**
      * @param  array<string, mixed>  $data
      */
-    public function capture(array $data, ?LandingPage $landingPage = null): Prospect
+    public function capture(array $data, ?LandingPage $landingPage = null, bool $recordWebsiteForm = true): Prospect
     {
         if ($landingPage && ! $landingPage->is_published) {
             throw ValidationException::withMessages([
@@ -99,6 +104,9 @@ class ProspectCaptureService
         }
 
         $this->notifyStakeholders($prospect, $landingPage, $assigneeId);
+        if ($recordWebsiteForm) {
+            $this->recordWebsiteFormSubmission($prospect, $data);
+        }
         $actor = User::query()->find($assigneeId)
             ?? User::query()->whereHas('roles', fn ($q) => $q->where('slug', 'admin'))->first();
 
@@ -109,6 +117,45 @@ class ProspectCaptureService
         }
 
         return $prospect->fresh(['source', 'stage', 'assignedUser']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function recordWebsiteFormSubmission(Prospect $prospect, array $data): void
+    {
+        $formType = WebsiteFormType::tryFromFormContext(
+            Arr::get($data, 'form_context') !== null
+                ? (string) Arr::get($data, 'form_context')
+                : null,
+        );
+
+        if (! $formType) {
+            return;
+        }
+
+        [$firstName, $lastName] = $this->resolveName($data);
+        $name = trim(implode(' ', array_filter([$firstName, $lastName])));
+
+        $submission = WebsiteFormSubmission::query()->create([
+            'form_type' => $formType,
+            'status' => WebsiteFormSubmissionStatus::New,
+            'name' => $name !== '' ? $name : null,
+            'email' => Arr::get($data, 'email'),
+            'phone' => Arr::get($data, 'phone'),
+            'referrer_name' => Arr::get($data, 'referrer_name'),
+            'preferred_time' => Arr::get($data, 'preferred_time'),
+            'interested_in' => Arr::get($data, 'interested_in'),
+            'message' => Arr::get($data, 'message'),
+            'source' => Arr::get($data, 'source', 'website'),
+            'form_context' => $formType->formContext(),
+            'tracking_source' => Arr::get($data, 'tracking_source'),
+            'page_url' => Arr::get($data, 'page_url'),
+            'consent_given' => (bool) Arr::get($data, 'consent_given', false),
+            'prospect_id' => $prospect->id,
+        ]);
+
+        $this->emailMappings->notifyWebsiteFormSubmission($submission);
     }
 
     public function emailExists(string $email, ?LeadLifecycle $lifecycle = null): bool

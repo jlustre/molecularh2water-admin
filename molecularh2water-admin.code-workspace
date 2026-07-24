@@ -2,10 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../../../projects/MolecularH2Water"
 		}
-	],
-	"settings": {}
+	]
 }

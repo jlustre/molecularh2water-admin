@@ -23,7 +23,13 @@ class ActivityManager extends Component
 
     public string $typeId = '';
 
+    public string $dateFrom = '';
+
+    public string $dateTo = '';
+
     public bool $showForm = false;
+
+    public ?int $editingId = null;
 
     public ?int $lead_id = null;
 
@@ -54,9 +60,41 @@ class ActivityManager extends Component
         $this->completed_at = now()->format('Y-m-d\TH:i');
     }
 
-    public function openForm(): void
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDateFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDateTo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function openForm(?int $activityId = null): void
     {
         abort_unless(auth()->user()?->hasPermission('activities.manage'), 403);
+
+        if ($activityId) {
+            $activity = CrmScope::activities(Activity::query())->with('lead')->findOrFail($activityId);
+            $this->editingId = $activity->id;
+            $this->lead_id = $activity->lead_id;
+            $this->activity_type_id = $activity->activity_type_id;
+            $this->title = $activity->title ?? '';
+            $this->description = $activity->description ?? '';
+            $this->outcome = $activity->outcome ?? '';
+            $this->next_action = $activity->next_action ?? '';
+            $this->completed_at = $activity->completed_at?->format('Y-m-d\TH:i') ?? now()->format('Y-m-d\TH:i');
+            $this->next_follow_up_at = $activity->lead?->next_follow_up_at?->format('Y-m-d\TH:i') ?? '';
+            $this->duration_minutes = $activity->duration_minutes;
+        } else {
+            $this->resetForm();
+        }
+
         $this->showForm = true;
     }
 
@@ -74,13 +112,21 @@ class ActivityManager extends Component
         $lead = CrmScope::leads(Lead::query())->findOrFail($data['lead_id']);
         $this->authorize('view', $lead);
 
-        $activityService->log(array_merge($data, [
+        $payload = array_merge($data, [
             'completed_at' => $data['completed_at'] ?: now(),
             'next_follow_up_at' => $data['next_follow_up_at'] ?: null,
-        ]), auth()->user());
+        ]);
+
+        if ($this->editingId) {
+            $activity = CrmScope::activities(Activity::query())->findOrFail($this->editingId);
+            $activityService->update($activity, $payload, auth()->user());
+            session()->flash('status', 'Activity updated.');
+        } else {
+            $activityService->log($payload, auth()->user());
+            session()->flash('status', 'Activity logged successfully.');
+        }
 
         $this->closeForm();
-        session()->flash('status', 'Activity logged successfully.');
     }
 
     public function deleteActivity(int $activityId, ActivityService $activityService): void
@@ -114,6 +160,8 @@ class ActivityManager extends Component
             })
             ->when($this->typeId, fn ($q) => $q->where('activity_type_id', $this->typeId))
             ->when($this->lead_id, fn ($q) => $q->whereLeadId($this->lead_id))
+            ->when($this->dateFrom, fn ($q) => $q->whereDate('completed_at', '>=', $this->dateFrom))
+            ->when($this->dateTo, fn ($q) => $q->whereDate('completed_at', '<=', $this->dateTo))
             ->latest('completed_at')
             ->paginate(config('crm.pagination.activities', 20));
 
@@ -146,6 +194,7 @@ class ActivityManager extends Component
     private function resetForm(): void
     {
         $this->reset([
+            'editingId',
             'activity_type_id',
             'title',
             'description',

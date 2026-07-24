@@ -55,10 +55,12 @@
             class="flex gap-4 overflow-x-auto pb-4"
             x-data="{
                 draggedLeadId: null,
+                draggedContactType: null,
                 drop(stageId) {
-                    if (this.draggedLeadId) {
-                        $wire.requestMoveLead(this.draggedLeadId, stageId);
+                    if (this.draggedLeadId && this.draggedContactType) {
+                        $wire.requestMoveLead(this.draggedContactType, this.draggedLeadId, stageId);
                         this.draggedLeadId = null;
+                        this.draggedContactType = null;
                     }
                 }
             }"
@@ -66,12 +68,12 @@
             @foreach ($stages as $stage)
                 @php($panel = $stage->panelClasses())
                 <div
-                    class="min-w-[300px] flex-1 rounded-2xl border {{ $panel['border'] }} {{ $panel['bg'] }}"
+                    class="flex min-h-0 min-w-[300px] max-h-[calc(100vh-13rem)] flex-1 flex-col rounded-2xl border {{ $panel['border'] }} {{ $panel['bg'] }}"
                     wire:key="stage-column-{{ $stage->id }}"
                     x-on:dragover.prevent
                     x-on:drop.prevent="drop({{ $stage->id }})"
                 >
-                    <div class="rounded-t-2xl border-b {{ $panel['border'] }} px-4 py-3 {{ $panel['header'] }}">
+                    <div class="shrink-0 rounded-t-2xl border-b {{ $panel['border'] }} px-4 py-3 {{ $panel['header'] }}">
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-2">
                                 <span class="h-2.5 w-2.5 rounded-full {{ $panel['dot'] }}"></span>
@@ -87,13 +89,13 @@
                             </span>
                         </div>
                     </div>
-                    <div class="min-h-[120px] space-y-3 p-3">
+                    <div class="min-h-[120px] flex-1 space-y-3 overflow-y-auto overscroll-contain p-3">
                         @forelse ($stage->leads as $lead)
                             <div
                                 class="cursor-grab rounded-xl border border-slate-200 bg-white p-3 shadow-sm active:cursor-grabbing"
                                 draggable="true"
-                                wire:key="board-lead-{{ $lead->id }}"
-                                x-on:dragstart="draggedLeadId = {{ $lead->id }}"
+                                wire:key="board-contact-{{ $lead->getMorphClass() }}-{{ $lead->id }}"
+                                x-on:dragstart="draggedLeadId = {{ $lead->id }}; draggedContactType = '{{ $lead->getMorphClass() }}'"
                             >
                                 <div class="flex items-start justify-between gap-2">
                                     <a
@@ -103,7 +105,7 @@
                                         {{ $lead->fullName() }}
                                     </a>
                                     <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600">
-                                        {{ $lead->lifecycle->value }}
+                                        {{ $lead->lifecycle?->label() ?? ucfirst($lead->getMorphClass()) }}
                                     </span>
                                 </div>
                                 <p class="mt-1 text-xs text-slate-500">{{ $lead->email ?? $lead->phone ?? 'No contact' }}</p>

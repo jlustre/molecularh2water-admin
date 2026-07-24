@@ -37,13 +37,103 @@ function calendarAdmin(): User
     return $user;
 }
 
-it('renders the calendar dashboard for authorized users', function () {
+it('opens a day popup listing all items when a month cell is clicked', function () {
     $agent = calendarAgent();
+    $lead = Lead::factory()->assignedTo($agent)->create([
+        'first_name' => 'Day',
+        'last_name' => 'Popup',
+    ]);
+    $type = CalendarEventType::query()->first();
+    $day = now()->startOfDay()->addDays(3);
 
-    $this->actingAs($agent)
-        ->get(route('portal.crm.calendar.index'))
-        ->assertOk()
-        ->assertSee('CRM Calendar');
+    CalendarEvent::factory()
+        ->forUser($agent)
+        ->forLead($lead)
+        ->create([
+            'calendar_event_type_id' => $type->id,
+            'title' => 'Morning follow-up',
+            'start_at' => $day->copy()->setTime(9, 0),
+            'end_at' => $day->copy()->setTime(9, 30),
+        ]);
+
+    CalendarEvent::factory()
+        ->forUser($agent)
+        ->forLead($lead)
+        ->create([
+            'calendar_event_type_id' => $type->id,
+            'title' => 'Afternoon demo',
+            'start_at' => $day->copy()->setTime(14, 0),
+            'end_at' => $day->copy()->setTime(15, 0),
+        ]);
+
+    Livewire::actingAs($agent)
+        ->test(CalendarGrid::class, [
+            'focusDate' => $day->toDateString(),
+            'view' => 'month',
+            'filters' => [],
+            'canManage' => true,
+        ])
+        ->call('openDay', $day->toDateString())
+        ->assertSet('selectedDay', $day->toDateString())
+        ->assertSee('Day schedule')
+        ->assertSee($day->format('l, F j, Y'))
+        ->assertSee('Morning follow-up')
+        ->assertSee('Afternoon demo')
+        ->call('closeDay')
+        ->assertSet('selectedDay', null)
+        ->assertDontSee('Day schedule');
+});
+
+it('renders a year view and can open a day from it', function () {
+    $agent = calendarAgent();
+    $lead = Lead::factory()->assignedTo($agent)->create();
+    $type = CalendarEventType::query()->first();
+    $day = now()->startOfMonth()->addDays(10)->setTime(11, 0);
+
+    CalendarEvent::factory()
+        ->forUser($agent)
+        ->forLead($lead)
+        ->create([
+            'calendar_event_type_id' => $type->id,
+            'title' => 'Year view event',
+            'start_at' => $day,
+            'end_at' => $day->copy()->addHour(),
+        ]);
+
+    Livewire::actingAs($agent)
+        ->test(CalendarDashboard::class)
+        ->call('setView', 'year')
+        ->assertSet('view', 'year')
+        ->assertSee((string) now()->year)
+        ->assertSee('Year');
+
+    Livewire::actingAs($agent)
+        ->test(CalendarGrid::class, [
+            'focusDate' => $day->toDateString(),
+            'view' => 'year',
+            'filters' => [],
+            'canManage' => true,
+        ])
+        ->assertSee($day->format('F'))
+        ->call('openDay', $day->toDateString())
+        ->assertSee('Year view event')
+        ->call('openMonth', $day->copy()->startOfMonth()->toDateString())
+        ->assertDispatched('calendar-focus-month');
+});
+
+it('navigates by year in year view', function () {
+    $agent = calendarAgent();
+    $start = now()->toDateString();
+
+    Livewire::actingAs($agent)
+        ->test(CalendarDashboard::class)
+        ->set('focusDate', $start)
+        ->call('setView', 'year')
+        ->assertSet('view', 'year')
+        ->call('next')
+        ->assertSet('focusDate', \Carbon\Carbon::parse($start)->addYear()->toDateString())
+        ->call('previous')
+        ->assertSet('focusDate', $start);
 });
 
 it('includes a single calendar loading overlay on the dashboard', function () {
@@ -241,7 +331,8 @@ it('shows todays phone calls in the call list panel', function () {
         ->assertSee('Call Lists Today')
         ->assertSee('Pat Prospect')
         ->assertSee('555-0100')
-        ->assertSee('General follow-up');
+        ->assertSee('General follow-up')
+        ->assertSeeHtml('aria-label="1 item"');
 });
 
 it('moves overdue phone calls to the overdue follow-ups panel', function () {

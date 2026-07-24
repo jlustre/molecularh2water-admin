@@ -31,6 +31,7 @@ class DemonstrationService
             'contact_type' => $lead->getMorphClass(),
             'contact_id' => $lead->id,
             'user_id' => Arr::get($data, 'user_id', $user->id),
+            'credited_consultant_id' => Arr::get($data, 'credited_consultant_id') ?: null,
             'type' => Arr::get($data, 'type', DemonstrationType::Home->value),
             'status' => Arr::get($data, 'status', DemonstrationStatus::Scheduled->value),
             'scheduled_at' => Arr::get($data, 'scheduled_at', now()->addDay()),
@@ -47,7 +48,12 @@ class DemonstrationService
             'demonstration_scheduled',
             'Demo scheduled',
             $demo->type->label().' on '.$demo->scheduled_at->format('M j, Y g:i A'),
-            ['demonstration_id' => $demo->id, 'type' => $demo->type->value],
+            [
+                'demonstration_id' => $demo->id,
+                'type' => $demo->type->value,
+                'demo_consultant_id' => $demo->user_id,
+                'credited_consultant_id' => $demo->credited_consultant_id,
+            ],
             $user,
         );
 
@@ -56,7 +62,7 @@ class DemonstrationService
             'demonstration_id' => $demo->id,
         ], $user);
 
-        return $demo->fresh(['demonstrator']);
+        return $demo->fresh(['demonstrator', 'creditedConsultant']);
     }
 
     /**
@@ -66,7 +72,8 @@ class DemonstrationService
     {
         $demo->update(Arr::only($data, [
             'type', 'status', 'outcome', 'scheduled_at', 'duration_minutes',
-            'venue', 'host', 'guests_count', 'attended', 'notes', 'materials', 'user_id',
+            'venue', 'host', 'guests_count', 'attended', 'notes', 'materials',
+            'user_id', 'credited_consultant_id',
         ]));
 
         if ($demo->wasChanged('status')) {

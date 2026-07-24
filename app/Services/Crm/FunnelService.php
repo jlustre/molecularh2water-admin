@@ -2,6 +2,7 @@
 
 namespace App\Services\Crm;
 
+use App\Enums\Crm\LeadLifecycle;
 use App\Models\Crm\Customer;
 use App\Models\Crm\Funnel;
 use App\Models\Crm\FunnelStage;
@@ -10,6 +11,8 @@ use App\Models\Crm\PipelineStageHistory;
 use App\Models\Crm\Prospect;
 use App\Models\Crm\Recruit;
 use App\Models\User;
+use App\Support\Crm\CrmContactResolver;
+use App\Support\Crm\PipelineContacts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -69,6 +72,7 @@ class FunnelService
         );
 
         $lead = $lead->fresh(['stage', 'assignedUser', 'funnel', 'lostReason']);
+        $lead = $this->syncLifecycleForStage($lead, $stage, $user);
 
         if ($stage->slug === config('crm.closed_won_stage_slug', 'closed-won') && $stage->is_won) {
             $lead = app(AfterSalesService::class)->handleClosedWon($lead, $user);
@@ -262,7 +266,7 @@ class FunnelService
 
     public function deleteStage(FunnelStage $stage): void
     {
-        if ($stage->leads()->exists()) {
+        if (PipelineContacts::countForStage($stage->id) > 0) {
             throw ValidationException::withMessages([
                 'stage' => 'Cannot delete a stage that still contains leads. Move those records first.',
             ]);
@@ -285,6 +289,42 @@ class FunnelService
         $currentOrder = $stage->sort_order;
         $stage->update(['sort_order' => $sibling->sort_order]);
         $sibling->update(['sort_order' => $currentOrder]);
+    }
+
+    /**
+     * On the sales funnel, contacts stay Leads until Qualified as Prospect (and later).
+     */
+    public function syncLifecycleForStage(
+        Lead|Prospect|Customer|Recruit $contact,
+        FunnelStage $stage,
+        User $user,
+    ): Lead|Prospect|Customer|Recruit {
+        if ($stage->is_won) {
+            return $contact;
+        }
+
+        $conversionSlug = config('crm.prospect_conversion_stage_slug', 'qualified');
+        $conversionStage = FunnelStage::query()
+            ->where('funnel_id', $stage->funnel_id)
+            ->where('slug', $conversionSlug)
+            ->first();
+
+        if (! $conversionStage) {
+            return $contact;
+        }
+
+        $current = CrmContactResolver::lifecycleForModel($contact);
+        $shouldBeProspect = $stage->sort_order >= $conversionStage->sort_order;
+
+        if ($shouldBeProspect && $current === LeadLifecycle::Lead) {
+            return app(LeadService::class)->convertLifecycle($contact, LeadLifecycle::Prospect, $user);
+        }
+
+        if (! $shouldBeProspect && $current === LeadLifecycle::Prospect) {
+            return app(LeadService::class)->convertLifecycle($contact, LeadLifecycle::Lead, $user);
+        }
+
+        return $contact;
     }
 
     private function uniqueStageSlug(Funnel $funnel, string $slug, ?int $ignoreId = null): string

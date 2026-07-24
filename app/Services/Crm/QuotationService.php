@@ -30,7 +30,8 @@ class QuotationService
             $quotation = Quotation::query()->create([
                 'contact_type' => $lead->getMorphClass(),
                 'contact_id' => $lead->id,
-                'user_id' => $user->id,
+                'user_id' => Arr::get($data, 'user_id', $user->id),
+                'demo_consultant_id' => Arr::get($data, 'demo_consultant_id') ?: null,
                 'consultation_id' => Arr::get($data, 'consultation_id'),
                 'quote_number' => $this->generateQuoteNumber(),
                 'status' => QuotationStatus::Draft,
@@ -67,14 +68,16 @@ class QuotationService
     {
         return DB::transaction(function () use ($quotation, $data, $items, $user) {
             $quotation->update(Arr::only($data, [
+                'user_id', 'demo_consultant_id',
                 'discount_amount', 'tax_amount', 'shipping_amount',
                 'warranty_notes', 'financing_notes', 'payment_plan_notes', 'notes', 'valid_until',
+                'status',
             ]));
 
             $this->syncItems($quotation, $items);
             $this->recalculateTotals($quotation);
 
-            return $quotation->fresh(['items', 'author']);
+            return $quotation->fresh(['items', 'author', 'consultant', 'demoConsultant']);
         });
     }
 

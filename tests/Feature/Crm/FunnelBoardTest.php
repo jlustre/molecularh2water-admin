@@ -8,9 +8,11 @@ use App\Models\Crm\Funnel;
 use App\Models\Crm\FunnelStage;
 use App\Models\Crm\Lead;
 use App\Models\Crm\LostReason;
+use App\Models\Crm\Prospect;
 use App\Models\Crm\TimelineEvent;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Crm\PipelineContacts;
 use Database\Seeders\CrmSeeder;
 use Database\Seeders\RolesSeeder;
 use Livewire\Livewire;
@@ -40,7 +42,7 @@ function salesFunnelId(): int
     return (int) Funnel::query()->where('slug', 'sales-funnel')->value('id');
 }
 
-it('moves a lead between stages and logs a timeline event', function () {
+it('moves a lead between early stages and logs a timeline event', function () {
     $agent = funnelAgent();
     $firstStage = FunnelStage::query()->where('funnel_id', salesFunnelId())->orderBy('sort_order')->first();
     $secondStage = FunnelStage::query()->where('funnel_id', salesFunnelId())->orderBy('sort_order')->skip(1)->first();
@@ -53,16 +55,152 @@ it('moves a lead between stages and logs a timeline event', function () {
     Livewire::actingAs($agent)
         ->test(FunnelBoard::class)
         ->set('funnelId', salesFunnelId())
-        ->call('moveLead', $lead->id, $secondStage->id)
+        ->call('moveLead', 'lead', $lead->id, $secondStage->id)
         ->assertHasNoErrors();
 
     $lead->refresh();
 
-    expect($lead->funnel_stage_id)->toBe($secondStage->id);
+    expect($lead->funnel_stage_id)->toBe($secondStage->id)
+        ->and($lead->lifecycleSlug())->toBe(LeadLifecycle::Lead);
     expect(TimelineEvent::query()
-        ->where('lead_id', $lead->id)
+        ->where('contact_type', 'lead')
+        ->where('contact_id', $lead->id)
         ->where('event_type', 'funnel_moved')
         ->exists())->toBeTrue();
+});
+
+it('converts a lead to prospect when moved to Demo Invitation Sent', function () {
+    $agent = funnelAgent();
+    $newLead = FunnelStage::query()->where('funnel_id', salesFunnelId())->where('slug', 'new-lead')->first();
+    $demoInvite = FunnelStage::query()->where('funnel_id', salesFunnelId())->where('slug', 'demo-invitation-sent')->first();
+
+    $lead = Lead::factory()->assignedTo($agent)->create([
+        'funnel_id' => $newLead->funnel_id,
+        'funnel_stage_id' => $newLead->id,
+        'email' => 'demo.invite@example.com',
+    ]);
+
+    Livewire::actingAs($agent)
+        ->test(FunnelBoard::class)
+        ->set('funnelId', salesFunnelId())
+        ->call('moveLead', 'lead', $lead->id, $demoInvite->id)
+        ->assertHasNoErrors();
+
+    expect(Lead::query()->where('email', 'demo.invite@example.com')->exists())->toBeFalse();
+
+    $prospect = Prospect::query()->where('email', 'demo.invite@example.com')->first();
+
+    expect($prospect)->not->toBeNull()
+        ->and($prospect->lifecycleSlug())->toBe(LeadLifecycle::Prospect)
+        ->and($prospect->stage?->slug)->toBe('demo-invitation-sent');
+});
+
+it('converts a lead to prospect when moved to Qualified as Prospect', function () {
+    $agent = funnelAgent();
+    $newLead = FunnelStage::query()->where('funnel_id', salesFunnelId())->where('slug', 'new-lead')->first();
+    $qualified = FunnelStage::query()->where('funnel_id', salesFunnelId())->where('slug', 'qualified')->first();
+
+    $lead = Lead::factory()->assignedTo($agent)->create([
+        'funnel_id' => $newLead->funnel_id,
+        'funnel_stage_id' => $newLead->id,
+        'email' => 'qualify.me@example.com',
+    ]);
+
+    Livewire::actingAs($agent)
+        ->test(FunnelBoard::class)
+        ->set('funnelId', salesFunnelId())
+        ->call('moveLead', 'lead', $lead->id, $qualified->id)
+        ->assertHasNoErrors();
+
+    expect(Lead::query()->where('email', 'qualify.me@example.com')->exists())->toBeFalse();
+
+    $prospect = Prospect::query()->where('email', 'qualify.me@example.com')->first();
+
+    expect($prospect)->not->toBeNull()
+        ->and($prospect->lifecycleSlug())->toBe(LeadLifecycle::Prospect)
+        ->and($prospect->stage?->slug)->toBe('qualified');
+});
+
+it('converts a prospect back to lead when moved before Qualified', function () {
+    $agent = funnelAgent();
+    $contacted = FunnelStage::query()->where('funnel_id', salesFunnelId())->where('slug', 'contacted')->first();
+    $qualified = FunnelStage::query()->where('funnel_id', salesFunnelId())->where('slug', 'qualified')->first();
+
+    $prospect = Prospect::factory()->assignedTo($agent)->create([
+        'funnel_id' => $qualified->funnel_id,
+        'funnel_stage_id' => $qualified->id,
+        'email' => 'demote.me@example.com',
+    ]);
+
+    Livewire::actingAs($agent)
+        ->test(FunnelBoard::class)
+        ->set('funnelId', salesFunnelId())
+        ->call('moveLead', 'prospect', $prospect->id, $contacted->id)
+        ->assertHasNoErrors();
+
+    expect(Prospect::query()->where('email', 'demote.me@example.com')->exists())->toBeFalse();
+
+    $lead = Lead::query()->where('email', 'demote.me@example.com')->first();
+
+    expect($lead)->not->toBeNull()
+        ->and($lead->lifecycleSlug())->toBe(LeadLifecycle::Lead)
+        ->and($lead->stage?->slug)->toBe('contacted');
+});
+
+it('keeps stage cards after dismissing the calendar suggestion', function () {
+    $agent = funnelAgent();
+    $newLead = FunnelStage::query()->where('funnel_id', salesFunnelId())->where('slug', 'new-lead')->first();
+    $qualified = FunnelStage::query()->where('funnel_id', salesFunnelId())->where('slug', 'qualified')->first();
+
+    $existing = Prospect::factory()->assignedTo($agent)->create([
+        'first_name' => 'Stay',
+        'last_name' => 'Visible',
+        'funnel_id' => $qualified->funnel_id,
+        'funnel_stage_id' => $qualified->id,
+        'email' => 'stay.visible@example.com',
+    ]);
+
+    $moving = Lead::factory()->assignedTo($agent)->create([
+        'first_name' => 'Move',
+        'last_name' => 'Me',
+        'funnel_id' => $newLead->funnel_id,
+        'funnel_stage_id' => $newLead->id,
+        'email' => 'move.me@example.com',
+    ]);
+
+    $component = Livewire::actingAs($agent)
+        ->test(FunnelBoard::class)
+        ->set('funnelId', salesFunnelId())
+        ->call('moveLead', 'lead', $moving->id, $qualified->id)
+        ->assertSet('showCalendarSuggestion', true)
+        ->assertSee('Stay Visible')
+        ->assertSee('Move Me')
+        ->call('dismissCalendarSuggestion')
+        ->assertSet('showCalendarSuggestion', false)
+        ->assertSee('Stay Visible')
+        ->assertSee('Move Me');
+
+    expect(Prospect::query()->where('email', 'stay.visible@example.com')->exists())->toBeTrue()
+        ->and(Prospect::query()->where('email', 'move.me@example.com')->exists())->toBeTrue()
+        ->and($existing->fresh()->funnel_stage_id)->toBe($qualified->id);
+});
+
+it('shows Lead badge text for contacts on early funnel stages', function () {
+    $agent = funnelAgent();
+    $newLead = FunnelStage::query()->where('funnel_id', salesFunnelId())->where('slug', 'new-lead')->first();
+
+    Lead::factory()->assignedTo($agent)->create([
+        'first_name' => 'Badge',
+        'last_name' => 'Lead',
+        'funnel_id' => $newLead->funnel_id,
+        'funnel_stage_id' => $newLead->id,
+    ]);
+
+    Livewire::actingAs($agent)
+        ->test(FunnelBoard::class)
+        ->set('funnelId', salesFunnelId())
+        ->assertSee('Badge Lead')
+        ->assertSee('Lead');
 });
 
 it('requires a lost reason when moving to a lost stage', function () {
@@ -87,23 +225,29 @@ it('requires a lost reason when moving to a lost stage', function () {
     Livewire::actingAs($agent)
         ->test(FunnelBoard::class)
         ->set('funnelId', salesFunnelId())
-        ->call('requestMoveLead', $lead->id, $lostStage->id)
+        ->call('requestMoveLead', 'lead', $lead->id, $lostStage->id)
         ->assertSet('showLostModal', true);
 
     Livewire::actingAs($agent)
         ->test(FunnelBoard::class)
+        ->set('pendingContactType', 'lead')
         ->set('pendingLeadId', $lead->id)
         ->set('pendingStageId', $lostStage->id)
         ->set('lostReasonId', LostReason::query()->where('slug', 'bought-competitor-product')->value('id'))
         ->call('confirmLostMove')
         ->assertHasNoErrors();
 
-    $lead->refresh();
+    expect(Lead::query()->whereKey($lead->id)->exists())->toBeFalse();
 
-    expect($lead->funnel_stage_id)->toBe($lostStage->id)
-        ->and($lead->status)->toBe(LeadStatus::New)
-        ->and($lead->lost_reason_id)->toBe(LostReason::query()->where('slug', 'bought-competitor-product')->value('id'))
-        ->and($lead->lost_reason)->toBe('Bought Competitor Product');
+    $prospect = Prospect::query()->where('email', $lead->email)->first()
+        ?? Prospect::query()->where('first_name', $lead->first_name)->where('last_name', $lead->last_name)->first();
+
+    expect($prospect)->not->toBeNull()
+        ->and($prospect->funnel_stage_id)->toBe($lostStage->id)
+        ->and($prospect->lifecycleSlug())->toBe(LeadLifecycle::Prospect)
+        ->and($prospect->status)->toBe(LeadStatus::New)
+        ->and($prospect->lost_reason_id)->toBe(LostReason::query()->where('slug', 'bought-competitor-product')->value('id'))
+        ->and($prospect->lost_reason)->toBe('Bought Competitor Product');
 });
 
 it('enrolls client in after-sales when moved to closed won on the board', function () {
@@ -120,19 +264,21 @@ it('enrolls client in after-sales when moved to closed won on the board', functi
         'funnel_id' => $openStage->funnel_id,
         'funnel_stage_id' => $openStage->id,
         'status' => 'negotiating',
+        'email' => 'closed.won.board@example.com',
     ]);
 
     Livewire::actingAs($agent)
         ->test(FunnelBoard::class)
         ->set('funnelId', salesFunnelId())
-        ->call('moveLead', $lead->id, $wonStage->id);
+        ->call('moveLead', 'lead', $lead->id, $wonStage->id);
 
-    $lead = $lead->fresh(['stage', 'funnel']);
+    $customer = \App\Models\Crm\Customer::query()->where('email', 'closed.won.board@example.com')->first();
 
-    expect($lead->lifecycle)->toBe(LeadLifecycle::Client)
-        ->and($lead->status)->toBe(LeadStatus::Customer)
-        ->and($lead->funnel?->slug)->toBe('after-sales-funnel')
-        ->and($lead->stage?->slug)->toBe('warranty-registration');
+    expect($customer)->not->toBeNull()
+        ->and($customer->lifecycle)->toBe(LeadLifecycle::Client)
+        ->and($customer->status)->toBe(LeadStatus::Customer)
+        ->and($customer->funnel?->slug)->toBe('after-sales-funnel')
+        ->and($customer->stage?->slug)->toBe('warranty-registration');
 });
 
 it('filters the board by lifecycle', function () {
@@ -144,14 +290,13 @@ it('filters the board by lifecycle', function () {
         ->first();
 
     Lead::factory()->assignedTo($agent)->create([
-        'lifecycle' => LeadLifecycle::Lead,
         'funnel_id' => $stage->funnel_id,
         'funnel_stage_id' => $stage->id,
         'first_name' => 'Visible',
         'last_name' => 'Lead',
     ]);
 
-    Lead::factory()->assignedTo($agent)->prospect()->create([
+    Prospect::factory()->assignedTo($agent)->create([
         'funnel_id' => $stage->funnel_id,
         'funnel_stage_id' => $stage->id,
         'first_name' => 'Hidden',
@@ -231,10 +376,37 @@ it('blocks agents from moving another users lead on the pipeline', function () {
     try {
         Livewire::actingAs($agentA)
             ->test(FunnelBoard::class)
-            ->call('moveLead', $lead->id, $targetStageId);
+            ->call('moveLead', 'lead', $lead->id, $targetStageId);
     } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
         // Scoped lookup blocks access to another user's lead.
     }
 
     expect($lead->fresh()->funnel_stage_id)->toBe($stageId);
+});
+
+it('shows referral leads on the referral funnel board and builder counts', function () {
+    $agent = funnelAgent();
+    $referralFunnel = Funnel::query()->where('slug', 'referral-funnel')->firstOrFail();
+    $entryStage = FunnelStage::query()
+        ->where('funnel_id', $referralFunnel->id)
+        ->where('slug', 'referral-received')
+        ->firstOrFail();
+
+    $beforeCount = PipelineContacts::countForStage($entryStage->id, $agent);
+
+    $client = \App\Models\Crm\Customer::factory()->assignedTo($agent)->create();
+    $referral = app(\App\Services\Crm\ReferralService::class)->recordReferral($client, [
+        'first_name' => 'Board',
+        'last_name' => 'Referral',
+        'email' => 'board.referral@example.com',
+    ], $agent);
+
+    Livewire::actingAs($agent)
+        ->test(FunnelBoard::class)
+        ->set('funnelId', $referralFunnel->id)
+        ->assertSee('Board Referral')
+        ->assertSee('Referral Received');
+
+    expect(PipelineContacts::countForStage($entryStage->id, $agent))->toBe($beforeCount + 1)
+        ->and($referral->referred->funnel_stage_id)->toBe($entryStage->id);
 });

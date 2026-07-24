@@ -99,47 +99,57 @@
                     </label>
                 </div>
             </x-crm.calendar-panel>
+
+            <livewire:crm.consultant-performance-panel />
         </div>
 
-        <div class="xl:col-span-3">
-            <x-crm.calendar-panel class="mb-4 flex flex-wrap items-center justify-between gap-3" tone="teal">
-                <div class="flex flex-wrap gap-2">
-                    @foreach (['month' => 'Month', 'week' => 'Week', 'day' => 'Day', 'agenda' => 'Agenda'] as $key => $label)
+        <div class="space-y-4 xl:col-span-3">
+            <x-crm.calendar-panel class="mb-0" tone="teal">
+                <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                    <div class="flex flex-wrap items-center gap-2">
                         <button
+                            class="inline-flex items-center justify-center rounded-full border border-teal-200 bg-white px-3 py-2 text-teal-700 shadow-sm transition hover:border-teal-300 hover:bg-teal-50"
                             type="button"
-                            class="rounded-full px-4 py-2 text-sm font-semibold transition {{ $view === $key ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}"
-                            wire:click="setView('{{ $key }}')"
+                            wire:click="previous"
+                            aria-label="Previous period"
                         >
-                            {{ $label }}
+                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                            </svg>
                         </button>
-                    @endforeach
+                        <button class="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600" type="button" wire:click="goToday">Today</button>
+                        <button
+                            class="inline-flex items-center justify-center rounded-full border border-teal-200 bg-white px-3 py-2 text-teal-700 shadow-sm transition hover:border-teal-300 hover:bg-teal-50"
+                            type="button"
+                            wire:click="next"
+                            aria-label="Next period"
+                        >
+                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                            </svg>
+                        </button>
+                        <p class="ml-1 text-sm font-semibold text-slate-700">
+                            @if ($view === 'day')
+                                {{ $focus->format('l, F j, Y') }}
+                            @elseif ($view === 'year')
+                                {{ $focus->format('Y') }}
+                            @else
+                                {{ $focus->format('F Y') }}
+                            @endif
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach (['year' => 'Year', 'month' => 'Month', 'week' => 'Week', 'day' => 'Day', 'agenda' => 'Agenda'] as $key => $label)
+                            <button
+                                type="button"
+                                class="rounded-full px-4 py-2 text-sm font-semibold transition {{ $view === $key ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}"
+                                wire:click="setView('{{ $key }}')"
+                            >
+                                {{ $label }}
+                            </button>
+                        @endforeach
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button
-                        class="inline-flex items-center justify-center rounded-full border border-teal-200 bg-white px-3 py-2 text-teal-700 shadow-sm transition hover:border-teal-300 hover:bg-teal-50"
-                        type="button"
-                        wire:click="previous"
-                        aria-label="Previous period"
-                    >
-                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                        </svg>
-                    </button>
-                    <button class="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600" type="button" wire:click="goToday">Today</button>
-                    <button
-                        class="inline-flex items-center justify-center rounded-full border border-teal-200 bg-white px-3 py-2 text-teal-700 shadow-sm transition hover:border-teal-300 hover:bg-teal-50"
-                        type="button"
-                        wire:click="next"
-                        aria-label="Next period"
-                    >
-                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                        </svg>
-                    </button>
-                </div>
-                <p class="w-full text-center text-sm font-semibold text-slate-700 sm:w-auto sm:text-right">
-                    {{ $focus->format($view === 'day' ? 'l, F j, Y' : 'F Y') }}
-                </p>
             </x-crm.calendar-panel>
 
             <livewire:crm.calendar.calendar-grid
@@ -149,6 +159,8 @@
                 :can-manage="$canManage"
                 wire:key="calendar-grid-{{ $view }}-{{ $focusDate }}-{{ md5(json_encode($filters)) }}"
             />
+
+            <livewire:crm.consultant-performance-summary />
         </div>
     </div>
 

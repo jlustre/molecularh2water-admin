@@ -2,16 +2,15 @@
 
 namespace App\Livewire\Crm;
 
-use App\Enums\Crm\LeadLifecycle;
 use App\Livewire\Crm\Concerns\UsesCrmLayout;
 use App\Models\Crm\Funnel;
 use App\Models\Crm\FunnelStage;
-use App\Models\Crm\Lead;
 use App\Models\Crm\LostReason;
 use App\Services\Crm\CalendarEventService;
 use App\Services\Crm\FunnelService;
 use App\Support\Crm\CrmRoutes;
-use App\Support\Crm\CrmScope;
+use App\Support\Crm\PipelineContacts;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -26,10 +25,9 @@ class FunnelBoard extends Component
 
     public string $lifecycleFilter = '';
 
-    /** @var Collection<int, FunnelStage> */
-    public Collection $stages;
-
     public bool $showLostModal = false;
+
+    public ?string $pendingContactType = null;
 
     public ?int $pendingLeadId = null;
 
@@ -41,6 +39,8 @@ class FunnelBoard extends Component
 
     public bool $showCalendarSuggestion = false;
 
+    public ?string $suggestionContactType = null;
+
     public ?int $suggestionLeadId = null;
 
     public ?string $suggestionTitle = null;
@@ -49,31 +49,31 @@ class FunnelBoard extends Component
 
     public function mount(): void
     {
-        $this->stages = collect();
-        $this->loadBoard();
+        $this->resolveFunnelId();
     }
 
     public function updatedFunnelId(): void
     {
-        $this->loadBoard();
+        // Board stages are loaded fresh in render().
     }
 
     public function updatedLifecycleFilter(): void
     {
-        $this->loadBoard();
+        // Board stages are loaded fresh in render().
     }
 
-    public function requestMoveLead(int $leadId, int $stageId): void
+    public function requestMoveLead(string $contactType, int $contactId, int $stageId): void
     {
         abort_unless(auth()->user()?->hasPermission('pipeline.manage'), 403);
 
-        $lead = CrmScope::leads(Lead::query())->findOrFail($leadId);
+        $lead = PipelineContacts::findAccessible($contactType, $contactId);
         $this->authorize('moveOnPipeline', $lead);
 
         $stage = FunnelStage::query()->findOrFail($stageId);
 
         if ($stage->is_lost) {
-            $this->pendingLeadId = $leadId;
+            $this->pendingContactType = $contactType;
+            $this->pendingLeadId = $contactId;
             $this->pendingStageId = $stageId;
             $this->lostReasonId = null;
             $this->lostReasonDetail = '';
@@ -82,7 +82,7 @@ class FunnelBoard extends Component
             return;
         }
 
-        $this->moveLead($leadId, $stageId);
+        $this->moveLead($contactType, $contactId, $stageId);
     }
 
     public function confirmLostMove(FunnelService $funnelService): void
@@ -99,7 +99,14 @@ class FunnelBoard extends Component
             ],
         ]);
 
-        $this->moveLead($this->pendingLeadId, $this->pendingStageId, $this->lostReasonId, $this->lostReasonDetail, $funnelService);
+        $this->moveLead(
+            (string) $this->pendingContactType,
+            (int) $this->pendingLeadId,
+            (int) $this->pendingStageId,
+            $this->lostReasonId,
+            $this->lostReasonDetail,
+            $funnelService,
+        );
         $this->resetLostModal();
     }
 
@@ -108,16 +115,22 @@ class FunnelBoard extends Component
         $this->resetLostModal();
     }
 
-    public function moveLead(int $leadId, int $stageId, ?int $lostReasonId = null, ?string $lostReasonDetail = null, ?FunnelService $funnelService = null): void
-    {
+    public function moveLead(
+        string $contactType,
+        int $contactId,
+        int $stageId,
+        ?int $lostReasonId = null,
+        ?string $lostReasonDetail = null,
+        ?FunnelService $funnelService = null,
+    ): void {
         abort_unless(auth()->user()?->hasPermission('pipeline.manage'), 403);
 
-        $lead = CrmScope::leads(Lead::query())->findOrFail($leadId);
+        $lead = PipelineContacts::findAccessible($contactType, $contactId);
         $this->authorize('moveOnPipeline', $lead);
 
         $stage = FunnelStage::query()->findOrFail($stageId);
 
-        ($funnelService ?? app(FunnelService::class))->moveLead(
+        $moved = ($funnelService ?? app(FunnelService::class))->moveLead(
             $lead,
             $stage,
             auth()->user(),
@@ -128,23 +141,28 @@ class FunnelBoard extends Component
         $suggestion = app(CalendarEventService::class)->suggestForStage($stage);
 
         if ($suggestion && auth()->user()?->hasPermission('calendar.view')) {
-            $this->suggestionLeadId = $leadId;
+            $this->suggestionContactType = $moved->getMorphClass();
+            $this->suggestionLeadId = $moved->id;
             $this->suggestionTitle = $suggestion['title'];
             $this->suggestionEventType = $suggestion['event_type_slug'];
             $this->showCalendarSuggestion = true;
         }
-
-        $this->loadBoard();
     }
 
     public function dismissCalendarSuggestion(): void
     {
-        $this->reset(['showCalendarSuggestion', 'suggestionLeadId', 'suggestionTitle', 'suggestionEventType']);
+        $this->reset([
+            'showCalendarSuggestion',
+            'suggestionContactType',
+            'suggestionLeadId',
+            'suggestionTitle',
+            'suggestionEventType',
+        ]);
     }
 
     public function calendarSuggestionUrl(): ?string
     {
-        if (! $this->suggestionLeadId) {
+        if (! $this->suggestionLeadId || ! $this->suggestionContactType) {
             return null;
         }
 
@@ -153,11 +171,12 @@ class FunnelBoard extends Component
         ]);
     }
 
-    public function leadProfileUrl(Lead $lead): string
+    public function leadProfileUrl(Model $lead): string
     {
-        return match ($lead->lifecycle) {
-            LeadLifecycle::Prospect => CrmRoutes::url('prospects.show', ['lead' => $lead]),
-            LeadLifecycle::Client => CrmRoutes::url('customers.show', ['lead' => $lead]),
+        return match ($lead->getMorphClass()) {
+            'prospect' => CrmRoutes::url('prospects.show', ['lead' => $lead]),
+            'customer' => CrmRoutes::url('customers.show', ['lead' => $lead]),
+            'recruit' => CrmRoutes::url('recruits.show', ['lead' => $lead]),
             default => CrmRoutes::url('leads.show', ['lead' => $lead]),
         };
     }
@@ -170,45 +189,71 @@ class FunnelBoard extends Component
 
         return view('livewire.crm.funnel-board', [
             'funnels' => $funnels,
+            'stages' => $this->boardStages(),
             'lostReasons' => LostReason::query()->where('is_active', true)->orderBy('sort_order')->get(),
         ])->layout($this->crmLayout());
     }
 
-    private function loadBoard(): void
+    /**
+     * @return Collection<int, FunnelStage>
+     */
+    private function boardStages(): Collection
     {
-        $this->stages = collect();
+        if (! Schema::hasTable('funnels')) {
+            return collect();
+        }
 
+        $this->resolveFunnelId();
+
+        if (! $this->funnelId) {
+            return collect();
+        }
+
+        $funnel = Funnel::query()->find($this->funnelId);
+
+        if (! $funnel) {
+            return collect();
+        }
+
+        $stages = $funnel->stages()->orderBy('sort_order')->get();
+        $contactsByStage = PipelineContacts::forStages(
+            $stages->pluck('id'),
+            auth()->user(),
+            $this->lifecycleFilter !== '' ? $this->lifecycleFilter : null,
+        );
+
+        $stages->each(function (FunnelStage $stage) use ($contactsByStage) {
+            $stage->setRelation('leads', $contactsByStage->get($stage->id, collect()));
+        });
+
+        return $stages;
+    }
+
+    private function resolveFunnelId(): void
+    {
         if (! Schema::hasTable('funnels')) {
             return;
         }
 
-        $funnel = $this->funnelId
-            ? Funnel::query()->find($this->funnelId)
-            : Funnel::query()->where('is_default', true)->where('is_active', true)->first();
-
-        if (! $funnel) {
+        if ($this->funnelId && Funnel::query()->whereKey($this->funnelId)->exists()) {
             return;
         }
 
-        $this->funnelId = $funnel->id;
-
-        $this->stages = $funnel->stages()
-            ->with([
-                'leads' => function ($query) {
-                    $query = CrmScope::leads($query)->with('assignedUser')->orderByDesc('updated_at');
-
-                    if ($this->lifecycleFilter !== '') {
-                        $query->lifecycle($this->lifecycleFilter);
-                    }
-
-                    return $query;
-                },
-            ])
-            ->get();
+        $this->funnelId = Funnel::query()
+            ->where('is_default', true)
+            ->where('is_active', true)
+            ->value('id');
     }
 
     private function resetLostModal(): void
     {
-        $this->reset(['showLostModal', 'pendingLeadId', 'pendingStageId', 'lostReasonId', 'lostReasonDetail']);
+        $this->reset([
+            'showLostModal',
+            'pendingContactType',
+            'pendingLeadId',
+            'pendingStageId',
+            'lostReasonId',
+            'lostReasonDetail',
+        ]);
     }
 }

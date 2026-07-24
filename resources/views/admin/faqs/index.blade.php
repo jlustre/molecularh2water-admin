@@ -105,13 +105,20 @@
                                     <td class="px-4 py-4 text-slate-500">{{ $faq->updated_at?->diffForHumans() }}</td>
                                     <td class="px-4 py-4">
                                         <div class="flex flex-wrap justify-end gap-2">
+                                            <form method="POST" action="{{ route('admin.faqs.move-up', $faq) }}">
+                                                @csrf
+                                                <button type="submit" aria-label="Move up" title="Move up" class="inline-flex size-9 items-center justify-center rounded-md border border-teal-100 bg-white text-teal-700 transition hover:bg-teal-50">↑</button>
+                                            </form>
+                                            <form method="POST" action="{{ route('admin.faqs.move-down', $faq) }}">
+                                                @csrf
+                                                <button type="submit" aria-label="Move down" title="Move down" class="inline-flex size-9 items-center justify-center rounded-md border border-teal-100 bg-white text-teal-700 transition hover:bg-teal-50">↓</button>
+                                            </form>
                                             <a href="{{ route('admin.faqs.edit', $faq) }}" aria-label="Edit" title="Edit" class="group relative inline-flex size-9 items-center justify-center rounded-md border border-teal-100 bg-white text-teal-700 transition hover:bg-teal-50 hover:text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-300">
                                                 <svg class="size-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="m4 20 4.5-1 10-10a2.12 2.12 0 0 0-3-3l-10 10L4 20Z"/>
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="m14 7 3 3"/>
                                                 </svg>
                                                 <span class="sr-only">Edit</span>
-                                                <span class="pointer-events-none absolute bottom-full right-0 z-10 mb-2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-bold text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus:opacity-100">Edit</span>
                                             </a>
                                             <form method="POST" action="{{ route('admin.faqs.destroy', $faq) }}" onsubmit="return confirm('Delete this FAQ?');">
                                                 @csrf
@@ -121,7 +128,6 @@
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 7h14M10 11v6M14 11v6M8 7l1-3h6l1 3M7 7l1 13h8l1-13"/>
                                                     </svg>
                                                     <span class="sr-only">Delete</span>
-                                                    <span class="pointer-events-none absolute bottom-full right-0 z-10 mb-2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-bold text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus:opacity-100">Delete</span>
                                                 </button>
                                             </form>
                                         </div>

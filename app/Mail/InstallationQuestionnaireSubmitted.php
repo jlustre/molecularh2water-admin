@@ -39,22 +39,17 @@ class InstallationQuestionnaireSubmitted extends Mailable
      */
     public function attachments(): array
     {
-        if (! $this->questionnaire->sink_photo_path) {
-            return [];
+        $attachments = [];
+
+        foreach ($this->questionnaire->sinkPhotoItems() as $index => $photo) {
+            if (! Storage::disk('public')->exists($photo['path'])) {
+                continue;
+            }
+
+            $attachments[] = Attachment::fromStorageDisk('public', $photo['path'])
+                ->as($photo['original_name'] ?: 'sink-photo-'.($index + 1).'.jpg');
         }
 
-        if (! Storage::disk('public')->exists($this->questionnaire->sink_photo_path)) {
-            return [];
-        }
-
-        return [
-            Attachment::fromStorageDisk(
-                'public',
-                $this->questionnaire->sink_photo_path,
-            )->as(
-                $this->questionnaire->sink_photo_original_name
-                    ?: basename($this->questionnaire->sink_photo_path),
-            ),
-        ];
+        return $attachments;
     }
 }

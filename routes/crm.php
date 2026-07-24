@@ -11,11 +11,13 @@ use App\Livewire\Crm\FunnelManager;
 use App\Livewire\Crm\LandingPageManager;
 use App\Livewire\Crm\LeadForm;
 use App\Livewire\Crm\LeadProfile;
+use App\Livewire\Crm\CrmProductManager;
+use App\Livewire\Crm\InventoryManager;
+use App\Livewire\Crm\MemberSalesManager;
 use App\Livewire\Crm\Pages\ClientsIndex;
 use App\Livewire\Crm\Pages\LeadsIndex;
 use App\Livewire\Crm\Pages\ProspectsIndex;
 use App\Livewire\Crm\Pages\RecruitsIndex;
-use App\Livewire\Crm\Pages\SalesIndex;
 use App\Livewire\Crm\ExecutiveDashboard;
 use App\Livewire\Crm\ReportDashboard;
 use App\Livewire\Crm\TaskManager;
@@ -136,7 +138,17 @@ Route::middleware(['permission:activities.view'])->group(function () {
 });
 
 Route::middleware(['permission:sales.view'])->group(function () {
-    Route::get('/sales', SalesIndex::class)->name('sales.index');
+    Route::get('/sales', MemberSalesManager::class)->name('sales.index');
+    Route::get('/member-sales', function () {
+        $name = request()->is('admin/*') ? 'admin.crm.sales.index' : 'portal.crm.sales.index';
+
+        return redirect()->route($name, [], 301);
+    })->name('member-sales.index');
+});
+
+Route::middleware(['permission:products.view'])->group(function () {
+    Route::get('/products', CrmProductManager::class)->name('products.index');
+    Route::get('/inventory', InventoryManager::class)->name('inventory.index');
 });
 
 Route::middleware(['permission:tasks.view'])->group(function () {

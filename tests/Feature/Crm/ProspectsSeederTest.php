@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Crm\LeadLifecycle;
+use App\Models\Crm\Lead;
 use App\Models\Crm\Prospect;
 use App\Models\User;
 use App\Support\Crm\CrmScope;
@@ -16,7 +17,8 @@ beforeEach(function () {
 it('seeds named prospect scenarios across funnel stages', function () {
     $this->seed(ProspectsSeeder::class);
 
-    expect(Prospect::query()->count())->toBeGreaterThanOrEqual(12);
+    expect(Prospect::query()->count())->toBeGreaterThanOrEqual(9);
+    expect(Lead::query()->where('email', 'like', 'prospect.%@crm.demo')->count())->toBeGreaterThanOrEqual(3);
 
     $showBooked = Prospect::query()->where('email', 'prospect.show-booked@crm.demo')->first();
 
@@ -33,12 +35,19 @@ it('seeds named prospect scenarios across funnel stages', function () {
         ->and($lost->stage?->slug)->toBe('closed-lost')
         ->and($lost->lost_reason_id)->not->toBeNull();
 
-    $unassigned = Prospect::query()->where('email', 'prospect.new-lead@crm.demo')->first();
+    $unassigned = Lead::query()->where('email', 'prospect.new-lead@crm.demo')->first();
 
     expect($unassigned)->not->toBeNull()
+        ->and($unassigned->lifecycleSlug())->toBe(LeadLifecycle::Lead)
         ->and($unassigned->assigned_user_id)->toBeNull()
         ->and($unassigned->owners)->toBeEmpty()
         ->and($unassigned->stage?->slug)->toBe('new-lead');
+
+    $contacted = Lead::query()->where('email', 'prospect.contacted@crm.demo')->first();
+
+    expect($contacted)->not->toBeNull()
+        ->and($contacted->lifecycleSlug())->toBe(LeadLifecycle::Lead)
+        ->and($contacted->stage?->slug)->toBe('contacted');
 
     $shared = Prospect::query()->where('email', 'prospect.shared-agent1-2@crm.demo')->first();
 
@@ -55,6 +64,7 @@ it('scopes seeded prospects so agents only see their own unless co-owned', funct
 
     $agent1Emails = CrmScope::leads(Prospect::query()->where('email', 'like', 'prospect.%@crm.demo'), $agent1)
         ->pluck('email')
+        ->merge(CrmScope::leads(Lead::query()->where('email', 'like', 'prospect.%@crm.demo'), $agent1)->pluck('email'))
         ->all();
 
     expect($agent1Emails)
@@ -65,6 +75,7 @@ it('scopes seeded prospects so agents only see their own unless co-owned', funct
 
     $agent2Emails = CrmScope::leads(Prospect::query()->where('email', 'like', 'prospect.%@crm.demo'), $agent2)
         ->pluck('email')
+        ->merge(CrmScope::leads(Lead::query()->where('email', 'like', 'prospect.%@crm.demo'), $agent2)->pluck('email'))
         ->all();
 
     expect($agent2Emails)
@@ -76,6 +87,7 @@ it('scopes seeded prospects so agents only see their own unless co-owned', funct
 
     $agent3Emails = CrmScope::leads(Prospect::query()->where('email', 'like', 'prospect.%@crm.demo'), $agent3)
         ->pluck('email')
+        ->merge(CrmScope::leads(Lead::query()->where('email', 'like', 'prospect.%@crm.demo'), $agent3)->pluck('email'))
         ->all();
 
     expect($agent3Emails)
@@ -87,10 +99,12 @@ it('scopes seeded prospects so agents only see their own unless co-owned', funct
 
 it('can be re-run without duplicating seeded prospects', function () {
     $this->seed(ProspectsSeeder::class);
-    $firstCount = Prospect::query()->where('email', 'like', 'prospect.%@crm.demo')->count();
+    $firstCount = Prospect::query()->where('email', 'like', 'prospect.%@crm.demo')->count()
+        + Lead::query()->where('email', 'like', 'prospect.%@crm.demo')->count();
 
     $this->seed(ProspectsSeeder::class);
-    $secondCount = Prospect::query()->where('email', 'like', 'prospect.%@crm.demo')->count();
+    $secondCount = Prospect::query()->where('email', 'like', 'prospect.%@crm.demo')->count()
+        + Lead::query()->where('email', 'like', 'prospect.%@crm.demo')->count();
 
     expect($secondCount)->toBe($firstCount);
 });

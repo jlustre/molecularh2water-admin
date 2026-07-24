@@ -50,12 +50,29 @@ class UserController extends Controller
             };
         }
 
+        if ($request->filled('role')) {
+            $roleSlug = $request->string('role')->toString();
+            $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('slug', $roleSlug));
+        }
+
+        if ($request->filled('business_line')) {
+            $line = $request->string('business_line')->toString();
+            if (in_array($line, array_column(BusinessLine::cases(), 'value'), true)) {
+                $query->where(function ($lineQuery) use ($line) {
+                    $lineQuery->whereJsonContains('business_lines', $line)
+                        ->orWhereJsonContains('business_lines', BusinessLine::Both->value);
+                });
+            }
+        }
+
         $users = $query
             ->paginate((int) $request->integer('per_page', 10))
             ->withQueryString();
 
         return view('admin.users.index', [
             'users' => $users,
+            'roles' => \App\Models\Role::query()->where('status', 'active')->orderBy('name')->get(['id', 'name', 'slug']),
+            'businessLines' => BusinessLine::cases(),
             'totalUsers' => User::query()->count(),
             'verifiedUsers' => User::query()->whereNotNull('email_verified_at')->count(),
             'unverifiedUsers' => User::query()->whereNull('email_verified_at')->count(),
@@ -195,6 +212,8 @@ class UserController extends Controller
      */
     public function updateSeeder(): RedirectResponse
     {
+        abort_unless(auth()->user()?->isSuperAdmin(), 403);
+
         $users = User::query()
             ->with(['roles:id,slug', 'sponsor:id,email'])
             ->orderBy('id')

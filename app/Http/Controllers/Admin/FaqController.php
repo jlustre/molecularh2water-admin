@@ -96,6 +96,58 @@ class FaqController extends Controller
             ->with('status', 'FAQ deleted.');
     }
 
+    public function moveUp(Faq $faq): RedirectResponse
+    {
+        $previous = Faq::query()
+            ->where(function ($query) use ($faq) {
+                $query->where('sort_order', '<', $faq->sort_order)
+                    ->orWhere(function ($sameOrder) use ($faq) {
+                        $sameOrder->where('sort_order', $faq->sort_order)
+                            ->where('id', '<', $faq->id);
+                    });
+            })
+            ->ordered()
+            ->get()
+            ->last();
+
+        if ($previous) {
+            $this->swapSortOrder($faq, $previous);
+        }
+
+        return redirect()
+            ->route('admin.faqs.index')
+            ->with('status', 'FAQ order updated.');
+    }
+
+    public function moveDown(Faq $faq): RedirectResponse
+    {
+        $next = Faq::query()
+            ->where(function ($query) use ($faq) {
+                $query->where('sort_order', '>', $faq->sort_order)
+                    ->orWhere(function ($sameOrder) use ($faq) {
+                        $sameOrder->where('sort_order', $faq->sort_order)
+                            ->where('id', '>', $faq->id);
+                    });
+            })
+            ->ordered()
+            ->first();
+
+        if ($next) {
+            $this->swapSortOrder($faq, $next);
+        }
+
+        return redirect()
+            ->route('admin.faqs.index')
+            ->with('status', 'FAQ order updated.');
+    }
+
+    private function swapSortOrder(Faq $a, Faq $b): void
+    {
+        $orderA = $a->sort_order;
+        $a->update(['sort_order' => $b->sort_order]);
+        $b->update(['sort_order' => $orderA]);
+    }
+
     /**
      * @return array{question: string, answer: string, status: string, sort_order: int}
      */

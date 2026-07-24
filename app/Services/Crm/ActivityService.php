@@ -68,6 +68,47 @@ class ActivityService
         return $activity->fresh(['type', 'contact', 'user']);
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(Activity $activity, array $data, User $user): Activity
+    {
+        $type = ActivityType::query()->findOrFail((int) $data['activity_type_id']);
+        $contact = $this->resolveContact($data);
+        $completedAt = Arr::get($data, 'completed_at') ?: $activity->completed_at ?: now();
+
+        $activity->update([
+            'activity_type_id' => $type->id,
+            'contact_type' => $contact->getMorphClass(),
+            'contact_id' => $contact->id,
+            'title' => trim((string) Arr::get($data, 'title', $type->name)),
+            'description' => Arr::get($data, 'description'),
+            'outcome' => Arr::get($data, 'outcome'),
+            'next_action' => Arr::get($data, 'next_action'),
+            'completed_at' => $completedAt,
+            'duration_minutes' => Arr::get($data, 'duration_minutes'),
+        ]);
+
+        if ($nextFollowUp = Arr::get($data, 'next_follow_up_at')) {
+            $contact->update(['next_follow_up_at' => $nextFollowUp]);
+        }
+
+        $this->timeline->log(
+            $contact,
+            'activity_updated',
+            'Activity updated',
+            $activity->title,
+            [
+                'activity_id' => $activity->id,
+                'activity_type' => $type->slug,
+                'outcome' => $activity->outcome,
+            ],
+            $user,
+        );
+
+        return $activity->fresh(['type', 'contact', 'user']);
+    }
+
     public function delete(Activity $activity, User $user): void
     {
         $contact = $activity->contact;

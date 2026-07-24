@@ -75,8 +75,10 @@ class CrmContactTransferService
             'followup_sequence_enrollments',
         ];
 
+        $schema = DB::getSchemaBuilder();
+
         foreach ($tables as $table) {
-            if (! DB::getSchemaBuilder()->hasTable($table)) {
+            if (! $schema->hasTable($table) || ! $schema->hasColumn($table, 'contact_type')) {
                 continue;
             }
 
@@ -87,6 +89,34 @@ class CrmContactTransferService
                     'contact_type' => $to->getMorphClass(),
                     'contact_id' => $to->id,
                 ]);
+        }
+
+        if ($schema->hasTable('calendar_events')) {
+            if ($schema->hasColumn('calendar_events', 'contact_type')) {
+                DB::table('calendar_events')
+                    ->where('contact_type', $from->getMorphClass())
+                    ->where('contact_id', $from->id)
+                    ->update([
+                        'contact_type' => $to->getMorphClass(),
+                        'contact_id' => $to->id,
+                    ]);
+            }
+
+            if ($schema->hasColumn('calendar_events', 'related_type')) {
+                DB::table('calendar_events')
+                    ->where('related_type', $from->getMorphClass())
+                    ->where('related_id', $from->id)
+                    ->update([
+                        'related_type' => $to->getMorphClass(),
+                        'related_id' => $to->id,
+                    ]);
+            }
+
+            if ($schema->hasColumn('calendar_events', 'lead_id') && $from instanceof Lead) {
+                DB::table('calendar_events')
+                    ->where('lead_id', $from->id)
+                    ->update(['lead_id' => $to->id]);
+            }
         }
 
         DB::table('notes')

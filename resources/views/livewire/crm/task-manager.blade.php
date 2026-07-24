@@ -38,6 +38,27 @@
         </select>
     </div>
 
+    <div class="mb-4 flex flex-wrap gap-2">
+        @foreach ([
+            '' => 'All due dates',
+            'today' => 'Due today',
+            'overdue' => 'Overdue',
+            'upcoming' => 'Upcoming',
+        ] as $value => $label)
+            <button
+                @class([
+                    'rounded-full px-4 py-2 text-sm font-semibold shadow-sm',
+                    'bg-teal-600 text-white' => $duePreset === $value,
+                    'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50' => $duePreset !== $value,
+                ])
+                type="button"
+                wire:click="$set('duePreset', '{{ $value }}')"
+            >
+                {{ $label }}
+            </button>
+        @endforeach
+    </div>
+
     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-200">
             <thead class="bg-slate-50">

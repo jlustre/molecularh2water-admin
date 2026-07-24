@@ -32,12 +32,14 @@ class InstallationQuestionnaire extends Model
         'additional_notes',
         'sink_photo_path',
         'sink_photo_original_name',
+        'sink_photos',
     ];
 
     protected function casts(): array
     {
         return [
             'existing_equipment' => 'array',
+            'sink_photos' => 'array',
         ];
     }
 
@@ -62,13 +64,46 @@ class InstallationQuestionnaire extends Model
         });
     }
 
-    public function sinkPhotoUrl(): ?string
+    /**
+     * @return list<array{path: string, original_name: ?string, url: string}>
+     */
+    public function sinkPhotoItems(): array
     {
-        if (! $this->sink_photo_path) {
-            return null;
+        $photos = collect($this->sink_photos ?? [])
+            ->filter(fn ($photo) => is_array($photo) && filled($photo['path'] ?? null))
+            ->map(fn (array $photo) => [
+                'path' => (string) $photo['path'],
+                'original_name' => filled($photo['original_name'] ?? null)
+                    ? (string) $photo['original_name']
+                    : null,
+                'url' => Storage::disk('public')->url((string) $photo['path']),
+            ])
+            ->values()
+            ->all();
+
+        if ($photos !== []) {
+            return $photos;
         }
 
-        return Storage::disk('public')->url($this->sink_photo_path);
+        if (! $this->sink_photo_path) {
+            return [];
+        }
+
+        return [[
+            'path' => $this->sink_photo_path,
+            'original_name' => $this->sink_photo_original_name,
+            'url' => Storage::disk('public')->url($this->sink_photo_path),
+        ]];
+    }
+
+    public function hasSinkPhotos(): bool
+    {
+        return $this->sinkPhotoItems() !== [];
+    }
+
+    public function sinkPhotoUrl(): ?string
+    {
+        return $this->sinkPhotoItems()[0]['url'] ?? null;
     }
 
     public function ownershipLabel(): string

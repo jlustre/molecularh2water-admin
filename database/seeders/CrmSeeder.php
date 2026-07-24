@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Crm\ActivityType;
 use App\Models\Crm\CrmProduct;
+use App\Models\Crm\CrmProductCategory;
 use App\Models\Crm\Funnel;
 use App\Models\Crm\FunnelStage;
 use App\Models\Crm\LandingPage;
@@ -76,14 +77,38 @@ class CrmSeeder extends Seeder
             ->whereIn('slug', config('crm.legacy_inactive_activity_slugs', []))
             ->update(['is_active' => false]);
 
+        $categoriesByName = collect();
+
+        foreach (config('crm.default_product_categories', []) as $category) {
+            $record = CrmProductCategory::query()->updateOrCreate(
+                ['slug' => Str::slug($category['name'])],
+                [
+                    'name' => $category['name'],
+                    'kind' => $category['kind'] ?? 'product',
+                    'description' => $category['description'] ?? null,
+                    'is_active' => true,
+                    'sort_order' => $category['sort_order'] ?? 0,
+                ],
+            );
+
+            $categoriesByName->put($record->name, $record);
+        }
+
         foreach (config('crm.default_products', []) as $product) {
+            $categoryName = $product['category'] ?? null;
+            $category = $categoryName ? $categoriesByName->get($categoryName) : null;
+
             CrmProduct::query()->updateOrCreate(
                 ['sku' => $product['sku']],
                 [
                     'name' => $product['name'],
-                    'category' => $product['category'] ?? null,
+                    'kind' => $product['kind'] ?? 'product',
+                    'crm_product_category_id' => $category?->id,
+                    'category' => $category?->name ?? $categoryName,
                     'description' => $product['description'] ?? null,
                     'unit_price' => $product['unit_price'] ?? 0,
+                    'inventory_quantity' => $product['inventory_quantity'] ?? 10,
+                    'reorder_level' => $product['reorder_level'] ?? 5,
                     'is_active' => true,
                     'sort_order' => $product['sort_order'] ?? 0,
                 ],

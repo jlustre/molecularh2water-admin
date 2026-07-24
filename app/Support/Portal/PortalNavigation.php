@@ -14,7 +14,15 @@ class PortalNavigation
      */
     public static function links(?User $user = null): array
     {
-        $portalSections = ['workspace', 'crm', 'account'];
+        $portalSections = [
+            'workspace',
+            'crm_people',
+            'crm_pipeline',
+            'crm_schedule',
+            'crm_insights',
+            'crm_setup',
+            'account',
+        ];
 
         return collect(AppNavigation::links($user))
             ->filter(fn (array $link) => in_array($link['section'], $portalSections, true))

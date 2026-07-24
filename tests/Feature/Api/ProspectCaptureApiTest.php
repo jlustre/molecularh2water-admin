@@ -46,6 +46,14 @@ it('stores a prospect from the public api', function () {
         ->and($prospect->funnel_stage_id)->not->toBeNull()
         ->and($prospect->metadata['referrer_name'] ?? null)->toBe('Alex Rivera');
 
+    $this->assertDatabaseHas('website_form_submissions', [
+        'form_type' => 'contact_us',
+        'email' => 'jordan@example.com',
+        'prospect_id' => $prospect->id,
+        'interested_in' => 'Attending a Water Awareness Show',
+        'referrer_name' => 'Alex Rivera',
+    ]);
+
     expect(
         TimelineEvent::query()
             ->where('contact_type', $prospect->getMorphClass())
@@ -79,6 +87,10 @@ it('silently accepts honeypot prospect submissions', function () {
     ])->assertCreated();
 
     $this->assertDatabaseMissing('prospects', [
+        'email' => 'spam@example.com',
+    ]);
+
+    $this->assertDatabaseMissing('website_form_submissions', [
         'email' => 'spam@example.com',
     ]);
 });

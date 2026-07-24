@@ -37,7 +37,7 @@ it('shows appointments quick action on the dashboard', function () {
 
 it('lists upcoming appointments and schedules a new one', function () {
     $consultant = appointmentConsultant();
-    $lead = Lead::factory()->assignedTo($consultant)->prospect()->create([
+    $lead = Lead::factory()->assignedTo($consultant)->create([
         'first_name' => 'Sam',
         'last_name' => 'Prospect',
     ]);
@@ -67,7 +67,7 @@ it('lists upcoming appointments and schedules a new one', function () {
         ->assertDispatched('appointment-scheduled');
 
     $appointment = Appointment::query()
-        ->whereLeadId($lead->id)
+        ->whereContact($lead)
         ->where('location', 'Client home')
         ->latest('id')
         ->first();
@@ -95,11 +95,11 @@ it('creates a prospect when scheduling with an unknown contact', function () {
         ->call('createProspectAndSchedule')
         ->assertHasNoErrors();
 
-    $prospect = Prospect::query()->where('email', 'taylor@example.com')->first();
+    $prospect = \App\Models\Crm\Lead::query()->where('email', 'taylor@example.com')->first();
 
     expect($prospect)->not->toBeNull()
-        ->and($prospect->lifecycleSlug()->value)->toBe('prospect')
-        ->and(Appointment::query()->where('contact_type', 'prospect')->where('contact_id', $prospect->id)->exists())->toBeTrue();
+        ->and($prospect->lifecycleSlug()->value)->toBe('lead')
+        ->and(Appointment::query()->where('contact_type', 'lead')->where('contact_id', $prospect->id)->exists())->toBeTrue();
 });
 
 it('refreshes dashboard stats when an appointment is scheduled', function () {

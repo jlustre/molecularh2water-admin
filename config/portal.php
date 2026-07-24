@@ -1,23 +1,21 @@
 <?php
 
-use App\Support\Portal\Dashboard\Providers\CrmMetricsSectionProvider;
 use App\Support\Portal\Dashboard\Providers\NetworkSectionProvider;
 
 return [
 
-  /*
-  |--------------------------------------------------------------------------
-  | Portal dashboard section providers
-  |--------------------------------------------------------------------------
-  |
-  | Register section providers to extend the associate portal dashboard.
-  | Each provider returns stat cards relevant to the authenticated user.
-  |
-  */
+    /*
+    |--------------------------------------------------------------------------
+    | Portal dashboard section providers
+    |--------------------------------------------------------------------------
+    |
+    | Register section providers to extend the associate portal dashboard.
+    | Each provider returns stat cards relevant to the authenticated user.
+    |
+    */
 
     'dashboard_section_providers' => [
         NetworkSectionProvider::class,
-        CrmMetricsSectionProvider::class,
     ],
 
     /*

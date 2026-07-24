@@ -10,6 +10,7 @@ use App\Models\Crm\Lead;
 use App\Models\Crm\Prospect;
 use App\Models\Crm\Recruit;
 use App\Models\Crm\LeadSource;
+use App\Models\User;
 use App\Services\Crm\LeadService;
 use App\Support\Crm\CrmContactResolver;
 use App\Support\Crm\CrmRoutes;
@@ -34,11 +35,19 @@ class LeadTable extends Component
 
     public string $status = '';
 
+    public string $assignedUserId = '';
+
+    /** @var list<int|string> */
+    public array $selected = [];
+
+    public string $bulkAssigneeId = '';
+
     protected $queryString = [
         'search' => ['except' => ''],
         'temperature' => ['except' => ''],
         'sourceId' => ['except' => ''],
         'status' => ['except' => ''],
+        'assignedUserId' => ['except' => ''],
     ];
 
     public function mount(LeadLifecycle|string $lifecycle = LeadLifecycle::Lead): void
@@ -51,6 +60,37 @@ class LeadTable extends Component
     public function updatingSearch(): void
     {
         $this->resetPage();
+    }
+
+    public function updatingAssignedUserId(): void
+    {
+        $this->resetPage();
+        $this->selected = [];
+    }
+
+    public function bulkAssign(): void
+    {
+        abort_unless(auth()->user()?->hasPermission('leads.assign'), 403);
+
+        $this->validate([
+            'bulkAssigneeId' => ['required', 'exists:users,id'],
+            'selected' => ['required', 'array', 'min:1'],
+            'selected.*' => ['integer'],
+        ]);
+
+        $assigneeId = (int) $this->bulkAssigneeId;
+        $ids = array_map('intval', $this->selected);
+
+        $updated = CrmScope::contacts(CrmContactResolver::queryFor($this->lifecycle))
+            ->whereIn('id', $ids)
+            ->update(['assigned_user_id' => $assigneeId]);
+
+        $this->selected = [];
+        $this->bulkAssigneeId = '';
+
+        session()->flash('status', $updated === 1
+            ? '1 record assigned.'
+            : "{$updated} records assigned.");
     }
 
     public function deleteLead(int $leadId, LeadService $leadService): void
@@ -92,6 +132,11 @@ class LeadTable extends Component
         $user = auth()->user();
 
         return $user?->can('createForLifecycle', [Lead::class, $this->lifecycle]) ?? false;
+    }
+
+    public function canBulkAssign(): bool
+    {
+        return auth()->user()?->hasPermission('leads.assign') ?? false;
     }
 
     public function createUrl(): string
@@ -139,13 +184,20 @@ class LeadTable extends Component
             ->when($this->temperature, fn ($q) => $q->where('temperature', $this->temperature))
             ->when($this->sourceId, fn ($q) => $q->where('lead_source_id', $this->sourceId))
             ->when($this->status, fn ($q) => $q->where('status', $this->status))
+            ->when($this->assignedUserId !== '', fn ($q) => $q->where('assigned_user_id', $this->assignedUserId))
             ->latest()
             ->paginate(config('crm.pagination.leads', 15));
+
+        $assignees = User::query()
+            ->whereHas('roles', fn ($q) => $q->whereIn('slug', ['consultant', 'manager', 'team-admin', 'admin']))
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         return view('livewire.crm.lead-table', [
             'leads' => $leads,
             'sources' => LeadSource::query()->where('is_active', true)->orderBy('sort_order')->get(),
             'statuses' => LeadStatus::options(),
+            'assignees' => $assignees,
         ])->layout($this->crmLayout());
     }
 }

@@ -2,7 +2,9 @@
 
 namespace App\Notifications\Crm;
 
+use App\Contracts\Crm\CrmContact;
 use App\Models\Crm\Lead;
+use App\Models\Crm\Prospect;
 use App\Support\Crm\CrmRoutes;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,7 +16,7 @@ class CrmLeadCapturedNotification extends Notification implements ShouldQueue
     use Queueable;
 
     public function __construct(
-        public Lead $lead,
+        public Lead|Prospect|CrmContact $lead,
         public ?string $sourceLabel = null,
     ) {
         $this->onQueue(config('crm.queue.notifications', 'default'));
@@ -31,12 +33,13 @@ class CrmLeadCapturedNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $name = $this->lead->fullName();
+        $routeName = $this->lead instanceof Prospect ? 'prospects.show' : 'leads.show';
 
         return (new MailMessage)
             ->subject('New CRM capture: '.$name)
             ->line('A new prospect was captured'.($this->sourceLabel ? " from {$this->sourceLabel}" : '').'.')
             ->line($name.' · '.($this->lead->email ?? $this->lead->phone ?? 'No contact'))
-            ->action('View in CRM', CrmRoutes::urlForUser($notifiable, 'prospects.show', ['lead' => $this->lead]));
+            ->action('View in CRM', CrmRoutes::urlForUser($notifiable, $routeName, ['lead' => $this->lead]));
     }
 
     /**

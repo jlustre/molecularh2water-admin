@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\Crm\LeadLifecycle;
 use App\Livewire\Portal\Dashboard;
 use App\Livewire\Portal\ProspectsModal;
 use App\Livewire\Portal\QuickLinks;
+use App\Models\Crm\Lead;
 use App\Models\Crm\Prospect;
 use App\Models\Role;
 use App\Models\User;
@@ -74,10 +76,10 @@ it('lists recent prospects and creates a new prospect', function () {
         ->assertHasNoErrors()
         ->assertDispatched('prospect-created');
 
-    $created = Prospect::query()->where('email', 'casey@example.com')->first();
+    $created = Lead::query()->where('email', 'casey@example.com')->first();
 
     expect($created)->not->toBeNull()
-        ->and($created->lifecycleSlug()->value)->toBe('prospect')
+        ->and($created->lifecycleSlug())->toBe(LeadLifecycle::Lead)
         ->and($created->company)->toBe('River Wellness')
         ->and($created->message)->toBe('Met at cooking show');
 });
@@ -97,7 +99,7 @@ it('refreshes dashboard stats when a prospect is created', function () {
     $consultant = prospectsModalConsultant();
     $stats = app(DashboardStatsService::class);
 
-    $before = $stats->get($consultant)['activeProspects'];
+    $before = $stats->get($consultant)['totalLeads'];
 
     Livewire::actingAs($consultant)
         ->test(ProspectsModal::class)
@@ -108,7 +110,7 @@ it('refreshes dashboard stats when a prospect is created', function () {
         ->call('create')
         ->assertHasNoErrors();
 
-    $after = $stats->get($consultant)['activeProspects'];
+    $after = $stats->get($consultant)['totalLeads'];
 
     expect($after)->toBe($before + 1);
 });

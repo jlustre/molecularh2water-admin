@@ -61,6 +61,48 @@ it('logs an activity and updates lead contact timestamps', function () {
     expect(TimelineEvent::query()->whereLeadId($lead->id)->where('event_type', 'activity_logged')->exists())->toBeTrue();
 });
 
+it('edits an activity and filters by completed date', function () {
+    $agent = phase4Agent();
+    $lead = Lead::factory()->assignedTo($agent)->create();
+    $type = ActivityType::query()->first();
+
+    $activity = Activity::factory()->create([
+        'user_id' => $agent->id,
+        'contact_type' => 'lead',
+        'contact_id' => $lead->id,
+        'activity_type_id' => $type->id,
+        'title' => 'Original title',
+        'completed_at' => now()->subDays(2),
+    ]);
+
+    Activity::factory()->create([
+        'user_id' => $agent->id,
+        'contact_type' => 'lead',
+        'contact_id' => $lead->id,
+        'activity_type_id' => $type->id,
+        'title' => 'Old activity',
+        'completed_at' => now()->subDays(10),
+    ]);
+
+    Livewire::actingAs($agent)
+        ->test(ActivityManager::class)
+        ->call('openForm', $activity->id)
+        ->assertSet('editingId', $activity->id)
+        ->set('title', 'Updated title')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($activity->fresh()->title)->toBe('Updated title');
+    expect(TimelineEvent::query()->whereLeadId($lead->id)->where('event_type', 'activity_updated')->exists())->toBeTrue();
+
+    Livewire::actingAs($agent)
+        ->test(ActivityManager::class)
+        ->set('dateFrom', now()->subDays(3)->toDateString())
+        ->set('dateTo', now()->toDateString())
+        ->assertSee('Updated title')
+        ->assertDontSee('Old activity');
+});
+
 it('creates completes and deletes tasks with scoping', function () {
     $agentA = phase4Agent('Task Agent A');
     $agentB = phase4Agent('Task Agent B');
@@ -88,6 +130,41 @@ it('creates completes and deletes tasks with scoping', function () {
     Livewire::actingAs($agentA)
         ->test(TaskManager::class)
         ->assertDontSee('Hidden task');
+});
+
+it('filters tasks by due date presets', function () {
+    $agent = phase4Agent('Due Preset Agent');
+
+    Task::factory()->forUser($agent)->create([
+        'title' => 'Due today task',
+        'due_at' => now()->setTime(15, 0),
+        'status' => TaskStatus::Pending,
+    ]);
+
+    Task::factory()->forUser($agent)->create([
+        'title' => 'Overdue task',
+        'due_at' => now()->subDays(2),
+        'status' => TaskStatus::Pending,
+    ]);
+
+    Task::factory()->forUser($agent)->create([
+        'title' => 'Upcoming task',
+        'due_at' => now()->addDays(3),
+        'status' => TaskStatus::Pending,
+    ]);
+
+    Livewire::actingAs($agent)
+        ->test(TaskManager::class)
+        ->set('duePreset', 'today')
+        ->assertSee('Due today task')
+        ->assertDontSee('Overdue task')
+        ->assertDontSee('Upcoming task')
+        ->set('duePreset', 'overdue')
+        ->assertSee('Overdue task')
+        ->assertDontSee('Due today task')
+        ->set('duePreset', 'upcoming')
+        ->assertSee('Upcoming task')
+        ->assertDontSee('Overdue task');
 });
 
 it('schedules appointments on the calendar', function () {

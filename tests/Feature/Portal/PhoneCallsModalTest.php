@@ -280,10 +280,10 @@ it('creates a prospect and schedules a call when confirmed', function () {
         ->call('createProspectAndSchedule')
         ->assertHasNoErrors();
 
-    $lead = Prospect::query()->where('first_name', 'Taylor')->first();
+    $lead = \App\Models\Crm\Lead::query()->where('first_name', 'Taylor')->first();
 
     expect($lead)->not->toBeNull()
-        ->and($lead->lifecycleSlug())->toBe(LeadLifecycle::Prospect)
+        ->and($lead->lifecycleSlug())->toBe(LeadLifecycle::Lead)
         ->and(CalendarEvent::query()->where('title', 'Phone call with Taylor Newperson')->exists())->toBeTrue();
 });
 

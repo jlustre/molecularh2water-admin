@@ -573,7 +573,7 @@ class PhoneCallService
     {
         $classes = match ($kind) {
             'customer' => [Customer::class],
-            'prospect' => [Prospect::class, Lead::class, Recruit::class],
+            'prospect' => [Lead::class, Prospect::class, Recruit::class],
             default => [],
         };
 

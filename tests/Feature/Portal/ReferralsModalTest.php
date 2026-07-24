@@ -58,7 +58,7 @@ it('lists recent referrals and logs a new referral', function () {
         ->call('open')
         ->assertSet('show', true)
         ->assertSee('Alex Existing')
-        ->call('selectReferrer', $client->id)
+        ->call('selectReferrer', 'customer', $client->id)
         ->set('first_name', 'Jamie')
         ->set('last_name', 'Referral')
         ->set('email', 'jamie@example.com')
@@ -89,7 +89,40 @@ it('requires a referring person when logging a referral', function () {
         ->call('open')
         ->set('first_name', 'Taylor')
         ->call('create')
-        ->assertHasErrors(['referrer_lead_id' => 'Select the referring person.']);
+        ->assertHasErrors(['referrer_search']);
+});
+
+it('logs a referral with a free-text referring person who is not in CRM', function () {
+    $consultant = referralsModalConsultant();
+
+    Livewire::actingAs($consultant)
+        ->test(ReferralsModal::class)
+        ->call('open')
+        ->set('referrer_search', 'Neighbor Friend')
+        ->call('useTypedReferrer')
+        ->assertSet('referrer_is_external', true)
+        ->set('first_name', 'Chris')
+        ->set('last_name', 'Referred')
+        ->set('email', 'chris@example.com')
+        ->call('create')
+        ->assertHasNoErrors()
+        ->assertDispatched('referral-created');
+
+    $referrer = Lead::query()
+        ->where('first_name', 'Neighbor')
+        ->where('last_name', 'Friend')
+        ->first();
+
+    $created = Referral::query()
+        ->where('referrer_type', 'lead')
+        ->where('referrer_id', $referrer?->id)
+        ->whereHas('referred', fn ($query) => $query->where('email', 'chris@example.com'))
+        ->first();
+
+    expect($referrer)->not->toBeNull()
+        ->and($created)->not->toBeNull()
+        ->and($created->referred->referred_by_type)->toBe('lead')
+        ->and($created->referred->referred_by_id)->toBe($referrer->id);
 });
 
 it('searches prospects and customers as referring people', function () {
@@ -116,8 +149,8 @@ it('searches prospects and customers as referring people', function () {
     $service = app(\App\Services\Portal\PortalReferralService::class);
     $results = $service->searchReferrers('Sam', $consultant);
 
-    expect($results)->toHaveCount(2)
-        ->and($results->pluck('id')->all())->toEqual([$prospect->id, $client->id]);
+    expect($results->count())->toBeGreaterThanOrEqual(2)
+        ->and($results->pluck('email')->all())->toContain('sam@example.com', 'sam.client@example.com');
 });
 
 it('logs a referral with a prospect as the referring person', function () {
@@ -133,7 +166,7 @@ it('logs a referral with a prospect as the referring person', function () {
         ->test(ReferralsModal::class)
         ->call('open')
         ->assertSee('Referring person')
-        ->call('selectReferrer', $prospect->id)
+        ->call('selectReferrer', 'prospect', $prospect->id)
         ->set('first_name', 'Casey')
         ->set('last_name', 'Referred')
         ->call('create')
@@ -163,7 +196,7 @@ it('refreshes dashboard stats when a referral is logged', function () {
     Livewire::actingAs($consultant)
         ->test(ReferralsModal::class)
         ->call('open')
-        ->call('selectReferrer', $client->id)
+        ->call('selectReferrer', 'customer', $client->id)
         ->set('first_name', 'Jordan')
         ->set('last_name', 'Lee')
         ->set('phone', '555-0100')
@@ -190,7 +223,7 @@ it('updates pipeline summary when a referral is logged', function () {
     Livewire::actingAs($consultant)
         ->test(ReferralsModal::class)
         ->call('open')
-        ->call('selectReferrer', $client->id)
+        ->call('selectReferrer', 'customer', $client->id)
         ->set('first_name', 'Jordan')
         ->set('last_name', 'Lee')
         ->set('phone', '555-0100')
@@ -245,7 +278,7 @@ it('creates referred person as lead who can convert to prospect', function () {
     Livewire::actingAs($admin)
         ->test(ReferralsModal::class)
         ->call('open')
-        ->call('selectReferrer', $client->id)
+        ->call('selectReferrer', 'customer', $client->id)
         ->set('first_name', 'Drew')
         ->set('last_name', 'Referred')
         ->set('email', 'drew@example.com')
@@ -281,7 +314,7 @@ it('shows helper copy about leads and prospect conversion', function () {
         ->test(ReferralsModal::class)
         ->call('open')
         ->assertSee('added to your leads')
-        ->assertSee('converted to a prospect');
+        ->assertSee('do not need to be customers or members');
 });
 
 it('denies referrals modal without clients view permission', function () {

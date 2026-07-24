@@ -4,16 +4,22 @@ namespace App\Services\Crm;
 
 use App\Models\Crm\Activity;
 use App\Models\Crm\Appointment;
+use App\Models\Crm\CalendarEvent;
+use App\Models\Crm\ConsultantPerformanceDaily;
 use App\Models\Crm\Demonstration;
 use App\Models\Crm\FunnelStage;
 use App\Models\Crm\Lead;
+use App\Models\Crm\MemberSale;
 use App\Models\Crm\Order;
 use App\Models\Crm\Prospect;
 use App\Models\Crm\Task;
 use App\Models\Crm\TimelineEvent;
 use App\Models\User;
+use App\Support\Crm\CalendarScope;
 use App\Support\Crm\CrmScope;
+use App\Support\Crm\MemberSaleScope;
 use App\Support\Crm\PipelineSummaryGrouper;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
@@ -57,6 +63,163 @@ class DashboardStatsService
         );
 
         return array_merge($scalars, $this->computeCollections($user));
+    }
+
+    /**
+     * Week-scoped network + CRM growth counts for the merged dashboard section.
+     *
+     * @return array{
+     *     weekStart: Carbon,
+     *     weekEnd: Carbon,
+     *     teamMembers: int,
+     *     invites: int,
+     *     prospects: int,
+     *     leads: int,
+     *     followUps: int,
+     *     schedulePresentations: int,
+     *     presentations: int,
+     *     phoneCalls: int,
+     *     appointments: int,
+     *     tasks: int,
+     *     closedSales: int,
+     *     completedSales: int
+     * }
+     */
+    public function weeklyGrowth(?User $user = null, array $phoneCallTypeSlugs = []): array
+    {
+        $user ??= auth()->user();
+        $weekStart = now()->startOfWeek();
+        $weekEnd = now()->endOfWeek();
+
+        $empty = [
+            'weekStart' => $weekStart,
+            'weekEnd' => $weekEnd,
+            'teamMembers' => 0,
+            'invites' => 0,
+            'prospects' => 0,
+            'leads' => 0,
+            'followUps' => 0,
+            'schedulePresentations' => 0,
+            'presentations' => 0,
+            'phoneCalls' => 0,
+            'appointments' => 0,
+            'tasks' => 0,
+            'closedSales' => 0,
+            'completedSales' => 0,
+        ];
+
+        if (! $user) {
+            return $empty;
+        }
+
+        $leadQuery = Schema::hasTable('leads')
+            ? fn () => CrmScope::contacts(Lead::query(), $user)
+            : null;
+        $prospectQuery = Schema::hasTable('prospects')
+            ? fn () => CrmScope::contacts(Prospect::query(), $user)
+            : null;
+
+        $empty['teamMembers'] = $user->sponsoredUsers()
+            ->whereBetween('created_at', [$weekStart, $weekEnd])
+            ->count();
+
+        if ($prospectQuery) {
+            $empty['prospects'] = $prospectQuery()
+                ->whereBetween('created_at', [$weekStart, $weekEnd])
+                ->count();
+            $empty['followUps'] += $prospectQuery()
+                ->whereNotNull('next_follow_up_at')
+                ->whereBetween('next_follow_up_at', [$weekStart, $weekEnd])
+                ->count();
+        }
+
+        if ($leadQuery) {
+            $empty['leads'] = $leadQuery()
+                ->whereBetween('created_at', [$weekStart, $weekEnd])
+                ->count();
+            $empty['followUps'] += $leadQuery()
+                ->whereNotNull('next_follow_up_at')
+                ->whereBetween('next_follow_up_at', [$weekStart, $weekEnd])
+                ->count();
+
+            $wonStageIds = FunnelStage::query()->where('is_won', true)->pluck('id');
+            $empty['closedSales'] = $leadQuery()
+                ->whereIn('funnel_stage_id', $wonStageIds)
+                ->whereBetween('updated_at', [$weekStart, $weekEnd])
+                ->count();
+        }
+
+        if (Schema::hasTable('consultant_performance_dailies')) {
+            $performance = ConsultantPerformanceDaily::query()
+                ->where('user_id', $user->id)
+                ->whereDate('stat_date', '>=', $weekStart->toDateString())
+                ->whereDate('stat_date', '<=', $weekEnd->toDateString());
+
+            $empty['invites'] = (int) (clone $performance)->sum('invites');
+            $empty['schedulePresentations'] = (int) (clone $performance)->sum('schedule_presentation');
+            $empty['presentations'] = (int) (clone $performance)->sum('actual_demo');
+        } elseif (Schema::hasTable('demonstrations')) {
+            $empty['presentations'] = Demonstration::query()
+                ->whereBetween('scheduled_at', [$weekStart, $weekEnd])
+                ->forAccessibleContacts($user)
+                ->count();
+        }
+
+        if (Schema::hasTable('member_sales')) {
+            $empty['completedSales'] = MemberSaleScope::sales(MemberSale::query(), $user)
+                ->where(function ($query) use ($user) {
+                    $query->where('user_id', $user->id)
+                        ->orWhere('demo_consultant_id', $user->id);
+                })
+                ->where('status', \App\Enums\Crm\MemberSaleStatus::Completed)
+                ->where(function ($query) use ($weekStart, $weekEnd) {
+                    $query->whereBetween('completed_at', [$weekStart, $weekEnd])
+                        ->orWhere(function ($inner) use ($weekStart, $weekEnd) {
+                            $inner->whereNull('completed_at')
+                                ->whereBetween('updated_at', [$weekStart, $weekEnd]);
+                        });
+                })
+                ->count();
+        }
+
+        if (Schema::hasTable('calendar_events')) {
+            $empty['phoneCalls'] = $this->weeklyEventCount($user, $phoneCallTypeSlugs, $weekStart, $weekEnd);
+        }
+
+        if (Schema::hasTable('appointments')) {
+            $empty['appointments'] = CrmScope::appointments(Appointment::query(), $user)
+                ->whereBetween('starts_at', [$weekStart, $weekEnd])
+                ->count();
+        }
+
+        if (Schema::hasTable('tasks')) {
+            $empty['tasks'] = CrmScope::tasks(Task::query(), $user)
+                ->where(function ($query) use ($weekStart, $weekEnd) {
+                    $query->whereBetween('due_at', [$weekStart, $weekEnd])
+                        ->orWhere(function ($inner) use ($weekStart, $weekEnd) {
+                            $inner->whereNull('due_at')
+                                ->whereBetween('created_at', [$weekStart, $weekEnd]);
+                        });
+                })
+                ->count();
+        }
+
+        return $empty;
+    }
+
+    /**
+     * @param  list<string>  $typeSlugs
+     */
+    private function weeklyEventCount(User $user, array $typeSlugs, Carbon $weekStart, Carbon $weekEnd): int
+    {
+        if ($typeSlugs === []) {
+            return 0;
+        }
+
+        return CalendarScope::events(CalendarEvent::query(), $user)
+            ->whereHas('type', fn ($query) => $query->whereIn('slug', $typeSlugs))
+            ->whereBetween('start_at', [$weekStart, $weekEnd])
+            ->count();
     }
 
     public function forget(?User $user = null): void

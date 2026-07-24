@@ -5,3 +5,23 @@
 [x-cloak] {
     display: none !important;
 }
+
+/*
+ | Data tables — zebra striping + hover
+ | Targets admin/CRM `min-w-full` tables used across list pages.
+ */
+table.min-w-full > tbody > tr {
+    transition: background-color 0.15s ease;
+}
+
+table.min-w-full > tbody > tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+table.min-w-full > tbody > tr:nth-child(even) {
+    background-color: #f1f5f9; /* slate-100 */
+}
+
+table.min-w-full > tbody > tr:hover {
+    background-color: #ccfbf1; /* teal-100 */
+}

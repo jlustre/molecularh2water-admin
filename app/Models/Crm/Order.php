@@ -20,6 +20,7 @@ class Order extends Model
         'contact_id',
         'quotation_id',
         'user_id',
+        'demo_consultant_id',
         'order_number',
         'status',
         'payment_status',
@@ -60,6 +61,16 @@ class Order extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function consultant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function demoConsultant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'demo_consultant_id');
     }
 
     public function items(): HasMany

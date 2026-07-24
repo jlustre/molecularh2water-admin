@@ -83,6 +83,8 @@ class WarrantyRegistrationController extends Controller
 
     public function updateSeeder(): RedirectResponse
     {
+        abort_unless(auth()->user()?->isSuperAdmin(), 403);
+
         $registrations = WarrantyRegistration::query()
             ->orderBy('id')
             ->get([

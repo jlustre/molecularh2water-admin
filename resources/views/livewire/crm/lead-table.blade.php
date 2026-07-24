@@ -58,7 +58,7 @@
         </form>
     @endif
 
-    <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+    <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-5">
         <input
             class="rounded-xl border-slate-200 shadow-sm focus:border-teal-500 focus:ring-teal-500"
             placeholder="Search name, email, phone..."
@@ -83,12 +83,46 @@
                 <option value="{{ $value }}">{{ $label }}</option>
             @endforeach
         </select>
+        <select class="rounded-xl border-slate-200 shadow-sm" wire:model.live="assignedUserId">
+            <option value="">All assignees</option>
+            @foreach ($assignees as $assignee)
+                <option value="{{ $assignee->id }}">{{ $assignee->name }}</option>
+            @endforeach
+        </select>
     </div>
+
+    @if ($this->canBulkAssign() && count($selected) > 0)
+        <div class="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3">
+            <span class="text-sm font-semibold text-teal-800">{{ count($selected) }} selected</span>
+            <select class="rounded-xl border-slate-200 text-sm shadow-sm" wire:model="bulkAssigneeId">
+                <option value="">Assign to…</option>
+                @foreach ($assignees as $assignee)
+                    <option value="{{ $assignee->id }}">{{ $assignee->name }}</option>
+                @endforeach
+            </select>
+            <button
+                class="rounded-full bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"
+                type="button"
+                wire:click="bulkAssign"
+            >
+                Assign
+            </button>
+            @error('bulkAssigneeId')
+                <p class="text-sm text-rose-600">{{ $message }}</p>
+            @enderror
+            @error('selected')
+                <p class="text-sm text-rose-600">{{ $message }}</p>
+            @enderror
+        </div>
+    @endif
 
     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table class="min-w-full divide-y divide-slate-200">
             <thead class="bg-slate-50">
                 <tr>
+                    @if ($this->canBulkAssign())
+                        <th class="w-10 px-4 py-3"></th>
+                    @endif
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Contact</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Source</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Stage</th>
@@ -102,6 +136,16 @@
             <tbody class="divide-y divide-slate-100">
                 @forelse ($leads as $lead)
                     <tr class="hover:bg-slate-50/80" wire:key="lead-{{ $lead->id }}">
+                        @if ($this->canBulkAssign())
+                            <td class="px-4 py-3">
+                                <input
+                                    class="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                                    type="checkbox"
+                                    value="{{ $lead->id }}"
+                                    wire:model.live="selected"
+                                />
+                            </td>
+                        @endif
                         <td class="px-4 py-3">
                             <a class="font-semibold text-teal-700 hover:text-teal-900" href="{{ $this->showUrl($lead) }}">
                                 {{ $lead->fullName() }}
@@ -155,7 +199,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td class="px-4 py-10 text-center text-sm text-slate-500" colspan="8">
+                        <td class="px-4 py-10 text-center text-sm text-slate-500" colspan="{{ $this->canBulkAssign() ? 9 : 8 }}">
                             No {{ strtolower($lifecycle->label()) }} records yet. Import or create one to get started.
                         </td>
                     </tr>

@@ -10,6 +10,7 @@ use App\Models\Crm\Activity;
 use App\Models\Crm\ActivityType;
 use App\Models\Crm\Funnel;
 use App\Models\Crm\FunnelStage;
+use App\Models\Crm\Lead;
 use App\Models\Crm\LeadSource;
 use App\Models\Crm\Lifecycle;
 use App\Models\Crm\Prospect;
@@ -19,6 +20,7 @@ use App\Models\Crm\Tag;
 use App\Models\Crm\Team;
 use App\Models\Crm\TimelineEvent;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -75,6 +77,8 @@ class ProspectsSeeder extends Seeder
             return;
         }
 
+        $conversionStage = $stages->get(config('crm.prospect_conversion_stage_slug', 'qualified'));
+
         foreach ($this->scenarios() as $scenario) {
             $stage = $stages->get($scenario['stage_slug']);
 
@@ -98,10 +102,16 @@ class ProspectsSeeder extends Seeder
                 ? $lostReasons->get($scenario['lost_reason_slug'])
                 : null;
 
-            $lead = Prospect::query()->updateOrCreate(
+            $lifecycle = $this->lifecycleForStage($stage, $conversionStage);
+            $modelClass = $lifecycle === LeadLifecycle::Lead ? Lead::class : Prospect::class;
+            $otherClass = $lifecycle === LeadLifecycle::Lead ? Prospect::class : Lead::class;
+
+            $otherClass::withTrashed()->where('email', $scenario['email'])->forceDelete();
+
+            $lead = $modelClass::query()->updateOrCreate(
                 ['email' => $scenario['email']],
                 [
-                    'lifecycle_id' => Lifecycle::idFor(LeadLifecycle::Prospect),
+                    'lifecycle_id' => Lifecycle::idFor($lifecycle),
                     'business_line' => $scenario['business_line'] ?? BusinessLine::H2s->value,
                     'status' => $scenario['status']->value,
                     'temperature' => $scenario['temperature']->value,
@@ -161,6 +171,17 @@ class ProspectsSeeder extends Seeder
         }
 
         $this->command?->info('ProspectsSeeder: seeded '.count($this->scenarios()).' prospect scenarios.');
+    }
+
+    private function lifecycleForStage(FunnelStage $stage, ?FunnelStage $conversionStage): LeadLifecycle
+    {
+        if (! $conversionStage) {
+            return LeadLifecycle::Prospect;
+        }
+
+        return $stage->sort_order >= $conversionStage->sort_order
+            ? LeadLifecycle::Prospect
+            : LeadLifecycle::Lead;
     }
 
     /**
@@ -449,7 +470,7 @@ class ProspectsSeeder extends Seeder
      * @param  \Illuminate\Support\Collection<string, ActivityType>  $activityTypes
      * @param  list<array{type: string, title: string, days_ago: int}>  $activities
      */
-    private function seedActivities(Prospect $lead, User $agent, $activityTypes, array $activities): void
+    private function seedActivities(Model $lead, User $agent, $activityTypes, array $activities): void
     {
         foreach ($activities as $activity) {
             $type = $activityTypes->get($activity['type']);
@@ -478,7 +499,7 @@ class ProspectsSeeder extends Seeder
         }
     }
 
-    private function seedNote(Prospect $lead, User $agent, ?string $body): void
+    private function seedNote(Model $lead, User $agent, ?string $body): void
     {
         if (blank($body)) {
             return;
@@ -494,7 +515,7 @@ class ProspectsSeeder extends Seeder
         );
     }
 
-    private function seedTimeline(Prospect $lead, User $agent, string $label): void
+    private function seedTimeline(Model $lead, User $agent, string $label): void
     {
         TimelineEvent::query()->updateOrCreate(
             [

@@ -25,7 +25,7 @@
                     @if (auth()->user()?->hasPermission('leads.update'))
                         <section>
                             <h3 class="text-sm font-bold text-slate-900">Log a referral</h3>
-                            <p class="mt-1 text-xs text-slate-500">Select the referring person and enter the referred contact. They are saved as a lead on your referral funnel and can be converted to a prospect when you are ready to work them.</p>
+                            <p class="mt-1 text-xs text-slate-500">Search an existing contact, or type any name — referring people do not need to be customers or members yet.</p>
 
                             <form class="mt-4 space-y-4" wire:submit="create">
                                 <div class="relative">
@@ -36,7 +36,7 @@
                                         id="referral-referrer-search"
                                         type="search"
                                         wire:model.live.debounce.300ms="referrer_search"
-                                        placeholder="Search prospects and customers (at least 3 characters)…"
+                                        placeholder="Type a name, or search existing contacts (3+ characters)…"
                                         class="block w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-orange-500 focus:ring-orange-500"
                                         autocomplete="off"
                                     />
@@ -47,8 +47,19 @@
                                                 Change
                                             </button>
                                         </div>
+                                    @elseif ($referrer_is_external)
+                                        <div class="mt-2 flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                            <div>
+                                                <p class="text-sm font-semibold text-slate-900">{{ $referrer_search }}</p>
+                                                <p class="text-[11px] text-slate-500">New referring person (not in CRM yet)</p>
+                                            </div>
+                                            <button type="button" wire:click="clearReferrer" class="text-xs font-semibold text-slate-600 hover:text-slate-900">
+                                                Change
+                                            </button>
+                                        </div>
                                     @endif
                                     @error('referrer_lead_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                    @error('referrer_search') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
 
                                     @if ($showReferrerResults)
                                         <ul class="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
@@ -56,23 +67,44 @@
                                                 <li>
                                                     <button
                                                         type="button"
-                                                        wire:click="selectReferrer({{ $referrer->id }})"
+                                                        wire:click="selectReferrer('{{ $referrer->getMorphClass() }}', {{ $referrer->id }})"
                                                         class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-orange-50"
                                                     >
                                                         <span class="font-semibold text-slate-900">{{ $referrer->fullName() }}</span>
                                                         <span @class([
                                                             'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                                                            'bg-slate-100 text-slate-700' => $referrer->lifecycle === \App\Enums\Crm\LeadLifecycle::Lead,
                                                             'bg-orange-100 text-orange-800' => $referrer->lifecycle === \App\Enums\Crm\LeadLifecycle::Prospect,
                                                             'bg-emerald-100 text-emerald-800' => $referrer->lifecycle === \App\Enums\Crm\LeadLifecycle::Client,
+                                                            'bg-violet-100 text-violet-800' => $referrer->lifecycle === \App\Enums\Crm\LeadLifecycle::Recruit,
                                                         ])>
-                                                            {{ $referrer->lifecycle?->label() }}
+                                                            {{ $referrer->lifecycle?->label() ?? 'Contact' }}
                                                         </span>
                                                     </button>
                                                 </li>
                                             @empty
-                                                <li class="px-3 py-2 text-sm text-slate-500">No matching prospects or customers found.</li>
+                                                <li class="px-3 py-2 text-sm text-slate-500">No matching contacts found.</li>
                                             @endforelse
+                                            @if ($canUseTypedReferrer)
+                                                <li class="border-t border-slate-100">
+                                                    <button
+                                                        type="button"
+                                                        wire:click="useTypedReferrer"
+                                                        class="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-semibold text-orange-800 hover:bg-orange-50"
+                                                    >
+                                                        Use “{{ trim($referrer_search) }}” as referring person
+                                                    </button>
+                                                </li>
+                                            @endif
                                         </ul>
+                                    @elseif ($canUseTypedReferrer && ! $referrer_is_external)
+                                        <button
+                                            type="button"
+                                            wire:click="useTypedReferrer"
+                                            class="mt-2 text-xs font-semibold text-orange-700 hover:text-orange-900"
+                                        >
+                                            Use “{{ trim($referrer_search) }}” as a new referring person
+                                        </button>
                                     @endif
                                 </div>
 
@@ -135,17 +167,18 @@
                                         <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
                                     </div>
                                     <div class="min-w-0 flex-1 space-y-0.5">
-                                        <a href="{{ route(\App\Support\Crm\CrmRoutes::name(match ($referral->referred->lifecycle) {
+                                        <a href="{{ route(\App\Support\Crm\CrmRoutes::name(match ($referral->referred?->lifecycle) {
                                             \App\Enums\Crm\LeadLifecycle::Prospect => 'prospects.show',
                                             \App\Enums\Crm\LeadLifecycle::Client => 'customers.show',
+                                            \App\Enums\Crm\LeadLifecycle::Recruit => 'recruits.show',
                                             default => 'leads.show',
                                         }), $referral->referred) }}" class="truncate text-sm font-semibold text-slate-900 hover:text-orange-800" wire:navigate>
-                                            {{ $referral->referred->fullName() }}
+                                            {{ $referral->referred?->fullName() }}
                                         </a>
                                         <p class="truncate text-xs text-slate-500">
-                                            Referred by {{ $referral->referrer->fullName() }}
+                                            Referred by {{ $referral->referrer?->fullName() ?? 'Unknown' }}
                                             · {{ $referral->status->label() }}
-                                            @if ($referral->referred->stage)
+                                            @if ($referral->referred?->stage)
                                                 · {{ $referral->referred->stage->name }}
                                             @endif
                                             · {{ $referral->created_at?->format('M j') }}

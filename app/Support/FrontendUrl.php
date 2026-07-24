@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Enums\WebsiteFormType;
+
 class FrontendUrl
 {
     public static function base(): string
@@ -24,6 +26,11 @@ class FrontendUrl
     public static function installationQuestionnaire(): string
     {
         return self::path((string) config('frontend.installation_path', '/installation'));
+    }
+
+    public static function websiteForm(WebsiteFormType $type): string
+    {
+        return self::path($type->frontendPath());
     }
 
     public static function environmentLabel(): string

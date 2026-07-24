@@ -47,12 +47,12 @@ it('renders role-aware member dashboard stats', function () {
         ->assertSee('Welcome back, '.$member->name)
         ->assertDontSee('Account Overview')
         ->assertDontSee('Resources Library')
-        ->assertSee('Network & Growth')
+        ->assertSee('Network & Growth This Week')
+        ->assertDontSee('My CRM Snapshot')
         ->assertSee('Team Members')
-        ->assertSee('Member Invites')
+        ->assertSee('Invites')
         ->assertSee('Quick Links')
-        ->assertSee('Demos')
-        ->assertSee('My CRM Snapshot')
+        ->assertSee('Actual Presentation')
         ->getContent();
 
     expect($html)
@@ -65,36 +65,43 @@ it('renders role-aware member dashboard stats', function () {
         ->and(preg_match_all('/data-portal-dashboard-scope(?=[\s>])/i', $html))->toBe(1);
 });
 
-it('renders consultant crm snapshot cards', function () {
+it('renders consultant weekly network growth cards', function () {
     $consultant = portalConsultant();
 
     $this->actingAs($consultant)
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('My CRM Snapshot')
-        ->assertSee('My Leads')
-        ->assertSee('Follow-Ups Today')
-        ->assertSee('My CRM Snapshot')
+        ->assertSee('Network & Growth This Week')
+        ->assertDontSee('My CRM Snapshot')
+        ->assertSee('Leads')
+        ->assertSee('Follow-Ups')
+        ->assertSee('Invites')
+        ->assertSee('Actual Presentation')
+        ->assertSee('Schedule Presentations')
+        ->assertSee('Completed Sales')
+        ->assertDontSee('Hot Prospects')
         ->assertSee('Upcoming Events')
         ->assertSee('Upcoming Tasks')
-        ->assertSee('Demos')
         ->assertSee('CRM Insights');
 });
 
-it('renders organization crm cards for super admins', function () {
+it('renders weekly growth cards for super admins', function () {
     $admin = superAdminUser();
 
     $this->actingAs($admin)
         ->get(route('dashboard'))
         ->assertOk()
         ->assertDontSee('Operations')
-        ->assertSee('Organization CRM')
-        ->assertSee('Total Leads');
+        ->assertDontSee('Organization CRM')
+        ->assertSee('Network & Growth This Week')
+        ->assertSee('Leads')
+        ->assertSee('Closed Sales');
 });
 
 it('exposes dashboard providers through portal config', function () {
     expect(config('portal.dashboard_section_providers'))
-        ->toContain(\App\Support\Portal\Dashboard\Providers\CrmMetricsSectionProvider::class);
+        ->toContain(\App\Support\Portal\Dashboard\Providers\NetworkSectionProvider::class)
+        ->not->toContain(\App\Support\Portal\Dashboard\Providers\CrmMetricsSectionProvider::class);
 });
 
 it('refreshes crm insights when the dashboard refresh event is dispatched', function () {

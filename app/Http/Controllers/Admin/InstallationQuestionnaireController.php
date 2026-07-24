@@ -65,7 +65,10 @@ class InstallationQuestionnaireController extends Controller
                 ->count(),
             'totalSubmissions' => InstallationQuestionnaire::query()->count(),
             'withPhotos' => InstallationQuestionnaire::query()
-                ->whereNotNull('sink_photo_path')
+                ->where(function ($query) {
+                    $query->whereNotNull('sink_photo_path')
+                        ->orWhereNotNull('sink_photos');
+                })
                 ->count(),
         ]);
     }
@@ -103,8 +106,8 @@ class InstallationQuestionnaireController extends Controller
 
     public function destroy(InstallationQuestionnaire $installationQuestionnaire): RedirectResponse
     {
-        if ($installationQuestionnaire->sink_photo_path) {
-            Storage::disk('public')->delete($installationQuestionnaire->sink_photo_path);
+        foreach ($installationQuestionnaire->sinkPhotoItems() as $photo) {
+            Storage::disk('public')->delete($photo['path']);
         }
 
         $installationQuestionnaire->delete();

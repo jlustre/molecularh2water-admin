@@ -22,7 +22,16 @@
         @endif
     </div>
 
-    <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+    <div class="mb-6 grid gap-4 xl:grid-cols-3">
+        <div class="xl:col-span-1">
+            <livewire:crm.consultant-performance-panel />
+        </div>
+        <div class="xl:col-span-2">
+            <livewire:crm.consultant-performance-summary />
+        </div>
+    </div>
+
+    <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-5">
         <input
             class="rounded-xl border-slate-200 shadow-sm focus:border-teal-500 focus:ring-teal-500"
             placeholder="Search activity or contact..."
@@ -41,6 +50,18 @@
                 <option value="{{ $lead->id }}">{{ $lead->fullName() }}</option>
             @endforeach
         </select>
+        <input
+            class="rounded-xl border-slate-200 shadow-sm"
+            type="date"
+            wire:model.live="dateFrom"
+            title="From date"
+        />
+        <input
+            class="rounded-xl border-slate-200 shadow-sm"
+            type="date"
+            wire:model.live="dateTo"
+            title="To date"
+        />
     </div>
 
     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -73,7 +94,14 @@
                         <td class="px-4 py-3 text-right text-sm">
                             @if (auth()->user()?->hasPermission('activities.manage'))
                                 <button
-                                    class="font-semibold text-rose-600 hover:text-rose-800"
+                                    class="font-semibold text-teal-700 hover:text-teal-900"
+                                    type="button"
+                                    wire:click="openForm({{ $activity->id }})"
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    class="ml-3 font-semibold text-rose-600 hover:text-rose-800"
                                     type="button"
                                     wire:click="deleteActivity({{ $activity->id }})"
                                     wire:confirm="Delete this activity?"
@@ -97,7 +125,7 @@
     @if ($showForm)
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
             <div class="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-                <h3 class="text-lg font-bold text-slate-900">Log Activity</h3>
+                <h3 class="text-lg font-bold text-slate-900">{{ $editingId ? 'Edit Activity' : 'Log Activity' }}</h3>
                 <form class="mt-4 space-y-4" wire:submit="save">
                     <div>
                         <label class="mb-1 block text-sm font-semibold text-slate-700">Contact *</label>
@@ -158,7 +186,9 @@
                     </div>
                     <div class="flex justify-end gap-2">
                         <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700" type="button" wire:click="closeForm">Cancel</button>
-                        <button class="rounded-full bg-teal-600 px-4 py-2 text-sm font-semibold text-white" type="submit">Save Activity</button>
+                        <button class="rounded-full bg-teal-600 px-4 py-2 text-sm font-semibold text-white" type="submit">
+                            {{ $editingId ? 'Save Changes' : 'Create Activity' }}
+                        </button>
                     </div>
                 </form>
             </div>

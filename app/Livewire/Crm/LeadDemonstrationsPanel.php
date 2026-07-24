@@ -10,6 +10,7 @@ use App\Models\Crm\Customer;
 use App\Models\Crm\Lead;
 use App\Models\Crm\Prospect;
 use App\Models\Crm\Recruit;
+use App\Models\User;
 use App\Services\Crm\DemonstrationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Validation\Rule;
@@ -33,6 +34,10 @@ class LeadDemonstrationsPanel extends Component
 
     public string $notes = '';
 
+    public ?int $demo_consultant_id = null;
+
+    public ?int $credited_consultant_id = null;
+
     public ?int $completingDemoId = null;
 
     public string $complete_outcome = 'interested';
@@ -46,12 +51,19 @@ class LeadDemonstrationsPanel extends Component
         $this->authorize('view', $lead);
         $this->lead = $lead;
         $this->scheduled_at = now()->addDay()->format('Y-m-d\TH:i');
+        $this->demo_consultant_id = auth()->id();
+        $this->credited_consultant_id = $lead->assigned_user_id ?: auth()->id();
     }
 
     public function toggleScheduleForm(): void
     {
         $this->authorize('update', $this->lead);
         $this->showScheduleForm = ! $this->showScheduleForm;
+
+        if ($this->showScheduleForm) {
+            $this->demo_consultant_id = auth()->id();
+            $this->credited_consultant_id = $this->lead->assigned_user_id ?: auth()->id();
+        }
     }
 
     public function scheduleDemo(DemonstrationService $demonstrations): void
@@ -64,14 +76,25 @@ class LeadDemonstrationsPanel extends Component
             'duration_minutes' => ['required', 'integer', 'min:15', 'max:480'],
             'venue' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'demo_consultant_id' => ['required', 'exists:users,id'],
+            'credited_consultant_id' => ['nullable', 'exists:users,id'],
         ]);
 
-        $demonstrations->schedule($this->lead, $validated, auth()->user());
+        $demonstrations->schedule($this->lead, [
+            ...$validated,
+            'user_id' => $validated['demo_consultant_id'],
+            'credited_consultant_id' => $validated['credited_consultant_id']
+                && (int) $validated['credited_consultant_id'] !== (int) $validated['demo_consultant_id']
+                    ? $validated['credited_consultant_id']
+                    : null,
+        ], auth()->user());
 
         $this->reset(['showScheduleForm', 'venue', 'notes']);
         $this->type = DemonstrationType::Home->value;
         $this->duration_minutes = 60;
         $this->scheduled_at = now()->addDay()->format('Y-m-d\TH:i');
+        $this->demo_consultant_id = auth()->id();
+        $this->credited_consultant_id = $this->lead->assigned_user_id ?: auth()->id();
         $this->lead->refresh();
     }
 
@@ -117,7 +140,8 @@ class LeadDemonstrationsPanel extends Component
     public function render()
     {
         return view('livewire.crm.lead-demonstrations-panel', [
-            'demonstrations' => $this->lead->demonstrations()->with('demonstrator')->limit(10)->get(),
+            'demonstrations' => $this->lead->demonstrations()->with(['demonstrator', 'creditedConsultant'])->limit(10)->get(),
+            'consultants' => User::query()->orderBy('name')->get(['id', 'name']),
             'demoTypes' => DemonstrationType::cases(),
             'demoStatuses' => DemonstrationStatus::cases(),
             'demoOutcomes' => DemonstrationOutcome::cases(),

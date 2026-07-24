@@ -17,6 +17,7 @@ class Quotation extends Model
         'contact_type',
         'contact_id',
         'user_id',
+        'demo_consultant_id',
         'consultation_id',
         'quote_number',
         'status',
@@ -54,6 +55,16 @@ class Quotation extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function consultant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function demoConsultant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'demo_consultant_id');
     }
 
     public function consultation(): BelongsTo

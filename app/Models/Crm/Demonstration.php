@@ -18,6 +18,7 @@ class Demonstration extends Model
         'contact_type',
         'contact_id',
         'user_id',
+        'credited_consultant_id',
         'calendar_event_id',
         'type',
         'status',
@@ -49,6 +50,30 @@ class Demonstration extends Model
     public function demonstrator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** Consultant who ran the demo. */
+    public function demoConsultant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** Consultant also credited (e.g. learning consultant the demo was run for). */
+    public function creditedConsultant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'credited_consultant_id');
+    }
+
+    public function creditLabels(): string
+    {
+        $demo = $this->demoConsultant?->name;
+        $credited = $this->creditedConsultant?->name;
+
+        if ($demo && $credited && (int) $this->user_id !== (int) $this->credited_consultant_id) {
+            return $credited.' · Demo by: '.$demo;
+        }
+
+        return $credited ?: ($demo ?: '—');
     }
 
     public function calendarEvent(): BelongsTo

@@ -220,6 +220,33 @@ it('deletes a lead from the table', function () {
     expect(Lead::query()->find($lead->id))->toBeNull();
 });
 
+it('bulk assigns selected leads and filters by assignee', function () {
+    $admin = crmAdmin();
+    $assignee = leadMgmtAgent('Bulk Assignee');
+    $other = leadMgmtAgent('Other Assignee');
+
+    $leadA = Lead::factory()->create(['assigned_user_id' => $admin->id, 'first_name' => 'Alpha']);
+    $leadB = Lead::factory()->create(['assigned_user_id' => $admin->id, 'first_name' => 'Beta']);
+    Lead::factory()->create(['assigned_user_id' => $other->id, 'first_name' => 'Gamma']);
+
+    Livewire::actingAs($admin)
+        ->test(\App\Livewire\Crm\LeadTable::class)
+        ->set('selected', [$leadA->id, $leadB->id])
+        ->set('bulkAssigneeId', (string) $assignee->id)
+        ->call('bulkAssign')
+        ->assertHasNoErrors();
+
+    expect($leadA->fresh()->assigned_user_id)->toBe($assignee->id)
+        ->and($leadB->fresh()->assigned_user_id)->toBe($assignee->id);
+
+    Livewire::actingAs($admin)
+        ->test(\App\Livewire\Crm\LeadTable::class)
+        ->set('assignedUserId', (string) $assignee->id)
+        ->assertSee('Alpha')
+        ->assertSee('Beta')
+        ->assertDontSee('Gamma');
+});
+
 it('shows view button on prospects index linking to prospect profile', function () {
     $agent = leadMgmtAgent();
     $prospect = Prospect::factory()->assignedTo($agent)->create([

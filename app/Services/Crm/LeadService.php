@@ -53,6 +53,12 @@ class LeadService
             $user,
         );
 
+        $contact = $contact->fresh(['source', 'stage', 'assignedUser', 'tags', 'lifecycleRecord']);
+
+        if ($contact->stage) {
+            $contact = $this->funnels->syncLifecycleForStage($contact, $contact->stage, $user);
+        }
+
         return $contact->fresh(['source', 'stage', 'assignedUser', 'tags', 'lifecycleRecord']);
     }
 

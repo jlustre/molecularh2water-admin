@@ -83,7 +83,9 @@ class PortalDemoService
      */
     public function schedule(array $data, User $actor): Demonstration
     {
-        $lead = $this->findContactById((int) $data['lead_id'], $actor);
+        $lead = filled($data['contact_type'] ?? null)
+            ? $this->findContactByTypeAndId((string) $data['contact_type'], (int) $data['lead_id'], $actor)
+            : $this->findContactById((int) $data['lead_id'], $actor);
 
         if (! $lead) {
             throw ValidationException::withMessages([
@@ -186,7 +188,7 @@ class PortalDemoService
             'last_name' => filled($data['last_name'] ?? null) ? trim((string) $data['last_name']) : null,
             'email' => filled($data['email'] ?? null) ? trim((string) $data['email']) : null,
             'phone' => filled($data['phone'] ?? null) ? trim((string) $data['phone']) : null,
-            'lifecycle' => LeadLifecycle::Prospect->value,
+            'lifecycle' => LeadLifecycle::Lead->value,
         ], $actor);
 
         app(DashboardStatsService::class)->notifyChanged($actor);
@@ -241,6 +243,23 @@ class PortalDemoService
         return null;
     }
 
+    private function findContactByTypeAndId(string $type, int $id, User $actor): Lead|Prospect|Customer|Recruit|null
+    {
+        $class = match ($type) {
+            'lead' => Lead::class,
+            'prospect' => Prospect::class,
+            'customer' => Customer::class,
+            'recruit' => Recruit::class,
+            default => null,
+        };
+
+        if (! $class) {
+            return null;
+        }
+
+        return CrmScope::contacts($class::query(), $actor)->find($id);
+    }
+
     /**
      * Prefer prospect/customer tables first — demos are usually booked against those,
      * and contact ids are not unique across morph types.
@@ -253,11 +272,11 @@ class PortalDemoService
     }
 
     /**
-     * @return Collection<int, class-string<Prospect|Customer>>
+     * @return Collection<int, class-string<Lead|Prospect|Customer>>
      */
     private function searchableContactClasses(): Collection
     {
-        return collect([Prospect::class, Customer::class]);
+        return collect([Lead::class, Prospect::class, Customer::class]);
     }
 
     /**

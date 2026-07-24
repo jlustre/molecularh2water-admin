@@ -41,6 +41,25 @@
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Venue</label>
                 <input class="w-full rounded-lg border-slate-200 text-sm" placeholder="Home address, office, Zoom link..." wire:model="venue" />
             </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Demo consultant</label>
+                <select class="w-full rounded-lg border-slate-200 text-sm" wire:model="demo_consultant_id">
+                    @foreach ($consultants as $consultant)
+                        <option value="{{ $consultant->id }}">{{ $consultant->name }}</option>
+                    @endforeach
+                </select>
+                <p class="mt-1 text-[10px] text-slate-500">Who is running the demo.</p>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Credited consultant</label>
+                <select class="w-full rounded-lg border-slate-200 text-sm" wire:model="credited_consultant_id">
+                    <option value="">Same as demo consultant</option>
+                    @foreach ($consultants as $consultant)
+                        <option value="{{ $consultant->id }}">{{ $consultant->name }}</option>
+                    @endforeach
+                </select>
+                <p class="mt-1 text-[10px] text-slate-500">Learning consultant who also gets credit.</p>
+            </div>
             <div class="sm:col-span-2">
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Notes</label>
                 <textarea class="w-full rounded-lg border-slate-200 text-sm" rows="2" wire:model="notes"></textarea>
@@ -61,7 +80,12 @@
                         <p class="text-sm font-bold text-slate-900">{{ $demo->type->label() }}</p>
                         <p class="mt-1 text-xs text-slate-500">
                             {{ $demo->scheduled_at->format('M j, Y g:i A') }}
-                            @if ($demo->demonstrator)
+                            @if ($demo->creditedConsultant && (int) $demo->credited_consultant_id !== (int) $demo->user_id)
+                                · {{ $demo->creditedConsultant->name }}
+                                @if ($demo->demonstrator)
+                                    · Demo by {{ $demo->demonstrator->name }}
+                                @endif
+                            @elseif ($demo->demonstrator)
                                 · {{ $demo->demonstrator->name }}
                             @endif
                         </p>

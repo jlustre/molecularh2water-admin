@@ -20,6 +20,8 @@ class CalendarGrid extends Component
 
     public bool $canManage = false;
 
+    public ?string $selectedDay = null;
+
     public function mount(string $focusDate, string $view = 'month', array $filters = [], bool $canManage = false): void
     {
         $this->focusDate = $focusDate;
@@ -40,14 +42,32 @@ class CalendarGrid extends Component
         // Re-render with current business line scope.
     }
 
+    public function openDay(string $date): void
+    {
+        $this->selectedDay = Carbon::parse($date)->toDateString();
+    }
+
+    public function closeDay(): void
+    {
+        $this->selectedDay = null;
+    }
+
     public function openDetails(string $kind, int $id): void
     {
+        $this->selectedDay = null;
         $this->dispatch('open-calendar-details', kind: $kind, id: $id);
     }
 
     public function openCreate(?string $date = null): void
     {
+        $this->selectedDay = null;
         $this->dispatch('open-calendar-create', date: $date);
+    }
+
+    public function openMonth(string $date): void
+    {
+        $this->selectedDay = null;
+        $this->dispatch('calendar-focus-month', date: Carbon::parse($date)->toDateString());
     }
 
     public function render(CalendarQueryService $calendar)
@@ -57,11 +77,26 @@ class CalendarGrid extends Component
 
         $entries = $calendar->entries($rangeStart, $rangeEnd, $this->filters);
         $entriesByDate = $entries->groupBy(fn ($entry) => $entry->start_at->format('Y-m-d'));
+        $countsByDate = $entriesByDate->map->count();
+
+        $selectedDayEntries = collect();
+        $selectedDayLabel = null;
+
+        if ($this->selectedDay) {
+            $selected = Carbon::parse($this->selectedDay);
+            $selectedDayLabel = $selected->format('l, F j, Y');
+            $selectedDayEntries = $entriesByDate->get($this->selectedDay, collect())
+                ->sortBy(fn ($entry) => $entry->start_at?->timestamp ?? 0)
+                ->values();
+        }
 
         return view('livewire.crm.calendar.calendar-grid', [
             'focus' => $focus,
             'entries' => $entries,
             'entriesByDate' => $entriesByDate,
+            'countsByDate' => $countsByDate,
+            'selectedDayEntries' => $selectedDayEntries,
+            'selectedDayLabel' => $selectedDayLabel,
             'typeColors' => config('calendar.type_colors', []),
         ]);
     }
@@ -75,6 +110,7 @@ class CalendarGrid extends Component
             'week' => [$focus->copy()->startOfWeek(), $focus->copy()->endOfWeek()],
             'day' => [$focus->copy()->startOfDay(), $focus->copy()->endOfDay()],
             'agenda' => [$focus->copy()->startOfDay(), $focus->copy()->addDays(30)->endOfDay()],
+            'year' => [$focus->copy()->startOfYear(), $focus->copy()->endOfYear()],
             default => [$focus->copy()->startOfMonth()->startOfWeek(), $focus->copy()->endOfMonth()->endOfWeek()],
         };
     }

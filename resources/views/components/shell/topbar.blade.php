@@ -13,24 +13,54 @@
     $tasksIndexUrl = $showTasks ? ShellTasks::indexUrl($user) : null;
 @endphp
 
-<section class="flex h-full w-full items-center border-b border-teal-100/60 bg-white">
+<section
+    class="flex h-full w-full items-center border-b border-teal-100/60 bg-white"
+    x-data="{
+        searchOpen: false,
+        focusSearch() {
+            this.searchOpen = true;
+            this.$nextTick(() => this.$refs.searchInput?.focus());
+        }
+    }"
+    @keydown.window.prevent.cmd.k="focusSearch()"
+    @keydown.window.prevent.ctrl.k="focusSearch()"
+>
     <div class="flex h-full w-full items-center gap-3 pl-2 pr-4 sm:gap-4 sm:pr-6">
-        {{-- Left: toggle + search --}}
         <div class="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
             <x-sidebar.toggle />
-            <form class="relative hidden min-w-0 max-w-xl flex-1 items-center lg:flex" role="search" aria-label="Global search">
+            <form
+                method="GET"
+                action="{{ route('search') }}"
+                class="relative hidden min-w-0 max-w-xl flex-1 items-center lg:flex"
+                role="search"
+                aria-label="Global search"
+            >
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-teal-400">
                     <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="2"/><path d="M16 16l-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 </span>
-                <input type="search" class="w-full rounded-full border border-teal-100/60 bg-white py-2.5 pl-12 pr-20 text-base font-medium text-navy-900 shadow-inner placeholder-teal-900/40 transition focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-300/40 dark:bg-navy-900/80 dark:text-white dark:placeholder-teal-100/40" placeholder="Search leads, pages, FAQs, blog articles..." aria-label="Search">
+                <input
+                    x-ref="searchInput"
+                    type="search"
+                    name="q"
+                    value="{{ request('q') }}"
+                    class="w-full rounded-full border border-teal-100/60 bg-white py-2.5 pl-12 pr-20 text-base font-medium text-navy-900 shadow-inner placeholder-teal-900/40 transition focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-300/40"
+                    placeholder="Search leads, FAQs, blog, media…"
+                    aria-label="Search"
+                >
                 <span class="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1">
-                    <span class="hidden rounded bg-teal-100/60 px-2 py-0.5 text-xs font-semibold text-teal-700 border border-teal-200 sm:inline-block">⌘ K</span>
-                    <span class="inline-block rounded bg-teal-100/60 px-2 py-0.5 text-xs font-semibold text-teal-700 border border-teal-200 sm:hidden">CTRL + K</span>
+                    <span class="hidden rounded border border-teal-200 bg-teal-100/60 px-2 py-0.5 text-xs font-semibold text-teal-700 sm:inline-block">⌘ K</span>
+                    <span class="inline-block rounded border border-teal-200 bg-teal-100/60 px-2 py-0.5 text-xs font-semibold text-teal-700 sm:hidden">CTRL+K</span>
                 </span>
             </form>
+            <a
+                href="{{ route('search') }}"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-teal-700 shadow transition hover:bg-teal-100/60 lg:hidden"
+                aria-label="Open search"
+            >
+                <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="2"/><path d="M16 16l-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </a>
         </div>
 
-        {{-- Right: actions + user --}}
         <div class="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
             @if ($user?->canAccessPortal() || $user?->canAccessAdmin())
                 <div class="hidden xl:block">
@@ -39,7 +69,7 @@
             @endif
 
             @if ($showNotifications)
-                <div class="relative hidden lg:block" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
+                <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
                     <button
                         type="button"
                         aria-label="Notifications"
@@ -59,13 +89,8 @@
                     <div
                         x-show="open"
                         x-cloak
-                        x-transition:enter="transition ease-out duration-150"
-                        x-transition:enter-start="opacity-0 translate-y-1"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                        x-transition:leave="transition ease-in duration-100"
-                        x-transition:leave-start="opacity-100 translate-y-0"
-                        x-transition:leave-end="opacity-0 translate-y-1"
-                        class="absolute right-0 top-full z-[80] mt-3 w-80 overflow-hidden rounded-xl border border-teal-100 bg-white shadow-xl shadow-teal-950/10"
+                        x-transition
+                        class="absolute right-0 top-full z-[80] mt-3 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-teal-100 bg-white shadow-xl shadow-teal-950/10"
                         role="menu"
                         aria-label="Notifications"
                     >
@@ -77,27 +102,18 @@
                                 </span>
                             @endif
                         </div>
-
                         <ul class="max-h-80 overflow-y-auto py-1">
                             @forelse ($recentNotifications as $notification)
                                 <li>
-                                    <a
-                                        href="{{ ShellNotifications::readUrl($notification) }}"
-                                        class="block px-4 py-3 transition hover:bg-teal-50 {{ $notification->read_at ? '' : 'bg-teal-50/70' }}"
-                                        role="menuitem"
-                                    >
+                                    <a href="{{ ShellNotifications::readUrl($notification) }}" class="block px-4 py-3 transition hover:bg-teal-50 {{ $notification->read_at ? '' : 'bg-teal-50/70' }}" role="menuitem">
                                         <p class="text-sm font-medium text-slate-900 {{ $notification->read_at ? '' : 'font-semibold' }}">
                                             {{ ShellNotifications::message($notification) }}
                                         </p>
-                                        <p class="mt-0.5 text-xs text-teal-700">
-                                            {{ $notification->created_at?->diffForHumans() }}
-                                        </p>
+                                        <p class="mt-0.5 text-xs text-teal-700">{{ $notification->created_at?->diffForHumans() }}</p>
                                     </a>
                                 </li>
                             @empty
-                                <li class="px-4 py-8 text-center text-sm text-slate-500">
-                                    No notifications yet.
-                                </li>
+                                <li class="px-4 py-8 text-center text-sm text-slate-500">No notifications yet.</li>
                             @endforelse
                         </ul>
                     </div>
@@ -105,7 +121,7 @@
             @endif
 
             @if ($showTasks)
-                <div class="relative hidden lg:block" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
+                <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
                     <button
                         type="button"
                         aria-label="Tasks"
@@ -125,36 +141,22 @@
                     <div
                         x-show="open"
                         x-cloak
-                        x-transition:enter="transition ease-out duration-150"
-                        x-transition:enter-start="opacity-0 translate-y-1"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                        x-transition:leave="transition ease-in duration-100"
-                        x-transition:leave-start="opacity-100 translate-y-0"
-                        x-transition:leave-end="opacity-0 translate-y-1"
-                        class="absolute right-0 top-full z-[80] mt-3 w-80 overflow-hidden rounded-xl border border-teal-100 bg-white shadow-xl shadow-teal-950/10"
+                        x-transition
+                        class="absolute right-0 top-full z-[80] mt-3 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-teal-100 bg-white shadow-xl shadow-teal-950/10"
                         role="menu"
                         aria-label="Tasks"
                     >
                         <div class="flex items-center justify-between border-b border-teal-50 px-4 py-3">
                             <p class="text-sm font-semibold text-slate-900">Open tasks</p>
                             @if ($openTaskCount > 0)
-                                <span class="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-800">
-                                    {{ $openTaskCount }}
-                                </span>
+                                <span class="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-800">{{ $openTaskCount }}</span>
                             @endif
                         </div>
-
                         <ul class="max-h-80 overflow-y-auto py-1">
                             @forelse ($recentTasks as $task)
-                                @php
-                                    $isOverdue = $task->due_at && $task->due_at->isPast();
-                                @endphp
+                                @php $isOverdue = $task->due_at && $task->due_at->isPast(); @endphp
                                 <li>
-                                    <a
-                                        href="{{ $tasksIndexUrl }}"
-                                        class="block px-4 py-3 transition hover:bg-teal-50 {{ $isOverdue ? 'bg-rose-50/60' : '' }}"
-                                        role="menuitem"
-                                    >
+                                    <a href="{{ $tasksIndexUrl }}" class="block px-4 py-3 transition hover:bg-teal-50 {{ $isOverdue ? 'bg-rose-50/60' : '' }}" role="menuitem">
                                         <p class="truncate text-sm font-semibold text-slate-900">{{ $task->title }}</p>
                                         <p class="mt-0.5 text-xs {{ $isOverdue ? 'font-medium text-rose-700' : 'text-teal-700' }}">
                                             @if ($task->due_at)
@@ -169,16 +171,11 @@
                                     </a>
                                 </li>
                             @empty
-                                <li class="px-4 py-8 text-center text-sm text-slate-500">
-                                    No open tasks.
-                                </li>
+                                <li class="px-4 py-8 text-center text-sm text-slate-500">No open tasks.</li>
                             @endforelse
                         </ul>
-
                         <div class="border-t border-teal-50 px-4 py-3">
-                            <a href="{{ $tasksIndexUrl }}" class="text-xs font-semibold text-teal-700 hover:text-teal-900">
-                                View all tasks
-                            </a>
+                            <a href="{{ $tasksIndexUrl }}" class="text-xs font-semibold text-teal-700 hover:text-teal-900">View all tasks</a>
                         </div>
                     </div>
                 </div>

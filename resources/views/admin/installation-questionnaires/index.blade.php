@@ -142,7 +142,8 @@
                                 <td class="px-3 py-3 text-slate-600">{{ $questionnaire->property_type }}</td>
                                 <td class="px-3 py-3 text-slate-600">{{ $questionnaire->water_source }}</td>
                                 <td class="px-3 py-3 text-slate-500">
-                                    {{ $questionnaire->sink_photo_path ? 'Yes' : 'No' }}
+                                    @php $photoCount = count($questionnaire->sinkPhotoItems()); @endphp
+                                    {{ $photoCount > 0 ? $photoCount : 'No' }}
                                 </td>
                                 <td class="px-3 py-3 text-slate-500">{{ $questionnaire->created_at?->format('M j, Y') }}</td>
                                 <td class="px-3 py-3">

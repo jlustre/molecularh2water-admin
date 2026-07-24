@@ -5,19 +5,33 @@
 
 <div class="grid gap-4 md:grid-cols-7">
     @foreach ($days as $day)
-        @php $dayEntries = $entries->filter(fn ($e) => $e->start_at->isSameDay($day)); @endphp
-        <div @class([
-            'rounded-xl border bg-gradient-to-br from-white to-slate-50/80 p-3',
-            'border-teal-300 from-teal-50/80 via-white to-emerald-50/50' => $day->isToday(),
-            'border-slate-200' => ! $day->isToday(),
-        ])>
+        @php
+            $dateKey = $day->format('Y-m-d');
+            $dayEntries = $entries->filter(fn ($e) => $e->start_at->isSameDay($day));
+            $isSelected = $selectedDay === $dateKey;
+        @endphp
+        <div
+            role="button"
+            tabindex="0"
+            wire:click="openDay('{{ $dateKey }}')"
+            wire:keydown.enter.prevent="openDay('{{ $dateKey }}')"
+            wire:keydown.space.prevent="openDay('{{ $dateKey }}')"
+            @class([
+                'group cursor-pointer rounded-xl border bg-gradient-to-br from-white to-slate-50/80 p-3 transition',
+                'hover:ring-2 hover:ring-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500',
+                'border-teal-300 from-teal-50/80 via-white to-emerald-50/50' => $day->isToday() && ! $isSelected,
+                'border-slate-200' => ! $day->isToday() && ! $isSelected,
+                'border-teal-600 ring-2 ring-teal-600' => $isSelected,
+            ])
+            aria-label="View schedule for {{ $day->format('F j, Y') }}"
+        >
             <p class="text-xs font-bold uppercase text-slate-500">{{ $day->format('D j') }}</p>
             <div class="mt-2 space-y-2">
                 @forelse ($dayEntries as $entry)
                     <button
                         type="button"
                         class="block w-full rounded-lg border px-2 py-1.5 text-left text-xs font-semibold {{ $typeColors[$entry->color] ?? 'bg-teal-100 text-teal-800 border-teal-200' }}"
-                        wire:click="openDetails('{{ $entry->kind }}', {{ $entry->id }})"
+                        wire:click.stop="openDetails('{{ $entry->kind }}', {{ $entry->id }})"
                     >
                         <span class="block">{{ $entry->start_at->format('g:i A') }}</span>
                         <span class="block truncate">{{ $entry->title }}</span>

@@ -118,6 +118,15 @@ it('hides agent leaderboard from scoped managers', function () {
         ->assertDontSee('Consultant Leaderboard');
 });
 
+it('exports report dashboard csv', function () {
+    $admin = phase6Admin();
+
+    Livewire::actingAs($admin)
+        ->test(ReportDashboard::class)
+        ->call('exportCsv')
+        ->assertFileDownloaded();
+});
+
 it('allows admins to manage lead sources in crm settings', function () {
     $admin = phase6Admin();
 

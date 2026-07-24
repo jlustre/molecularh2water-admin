@@ -6,12 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Mail\WarrantyRegistrationConfirmation;
 use App\Models\WarrantyRegistration;
 use App\Rules\UniqueWarrantySerialNumber;
+use App\Services\EmailMappingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
 class WarrantyRegistrationController extends Controller
 {
+    public function __construct(
+        private readonly EmailMappingService $emailMappings,
+    ) {}
+
     public function checkSerial(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -54,6 +59,8 @@ class WarrantyRegistrationController extends Controller
         Mail::to($registration->email)->send(
             new WarrantyRegistrationConfirmation($registration),
         );
+
+        $this->emailMappings->notifyWarrantyRegistration($registration);
 
         return response()->json([
             'message' => 'Your machine has been registered for warranty coverage.',

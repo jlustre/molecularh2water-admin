@@ -1,4 +1,15 @@
-<x-crm.calendar-panel title="Upcoming Shows/Demos" tone="violet">
+@php
+    $addBtn = 'inline-flex size-7 items-center justify-center rounded-lg border border-slate-200/80 bg-white/70 text-slate-700 transition hover:bg-white hover:text-teal-800';
+@endphp
+
+<x-crm.calendar-panel title="Upcoming Shows/Demos" tone="violet" panel-key="upcoming-shows" :count="$upcoming->count()">
+    <x-slot:actions>
+        @if ($canManage ?? false)
+            <button type="button" class="{{ $addBtn }}" wire:click="openCreateModal('show')" title="Add show or demo" aria-label="Add show or demo">
+                <svg class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+            </button>
+        @endif
+    </x-slot:actions>
     <ul class="mt-3 space-y-2 text-sm">
         @forelse ($upcoming as $entry)
             <li class="flex items-start gap-2 rounded-xl border border-white/60 bg-white/50 p-2 backdrop-blur-sm">
@@ -14,7 +25,14 @@
     </ul>
 </x-crm.calendar-panel>
 
-<x-crm.calendar-panel title="Call Lists Today" tone="blue">
+<x-crm.calendar-panel title="Call Lists Today" tone="blue" panel-key="call-lists" :count="$callListsToday->count()">
+    <x-slot:actions>
+        @if ($canManage ?? false)
+            <button type="button" class="{{ $addBtn }}" wire:click="openCreateModal('call')" title="Add phone call" aria-label="Add phone call">
+                <svg class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+            </button>
+        @endif
+    </x-slot:actions>
     <ul class="mt-3 space-y-2 text-sm">
         @forelse ($callListsToday as $entry)
             @php
@@ -62,7 +80,14 @@
     </ul>
 </x-crm.calendar-panel>
 
-<x-crm.calendar-panel title="Overdue Follow-Ups" tone="rose">
+<x-crm.calendar-panel title="Overdue Follow-Ups" tone="rose" panel-key="overdue-followups" :count="$overdueFollowUps->count()">
+    <x-slot:actions>
+        @if ($canManage ?? false)
+            <button type="button" class="{{ $addBtn }}" wire:click="openCreateModal('followup')" title="Add follow-up" aria-label="Add follow-up">
+                <svg class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+            </button>
+        @endif
+    </x-slot:actions>
     <ul class="mt-3 space-y-2 text-sm">
         @forelse ($overdueFollowUps as $entry)
             @php
@@ -110,7 +135,14 @@
     </ul>
 </x-crm.calendar-panel>
 
-<x-crm.calendar-panel title="Tasks Due Today" tone="amber">
+<x-crm.calendar-panel title="Tasks Due Today" tone="amber" panel-key="tasks-due" :count="$tasksDueToday->count()">
+    <x-slot:actions>
+        @if ($canManage ?? false)
+            <button type="button" class="{{ $addBtn }}" wire:click="openCreateModal('task')" title="Add task" aria-label="Add task">
+                <svg class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+            </button>
+        @endif
+    </x-slot:actions>
     <ul class="mt-3 space-y-2 text-sm">
         @forelse ($tasksDueToday as $task)
             <li class="flex items-center gap-2 rounded-xl border border-white/60 bg-white/50 p-2 backdrop-blur-sm">

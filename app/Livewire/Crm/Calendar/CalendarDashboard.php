@@ -47,14 +47,14 @@ class CalendarDashboard extends Component
             $this->lead_id = $lead;
         }
 
-        if ($view && in_array($view, ['month', 'week', 'day', 'agenda'], true)) {
+        if ($view && in_array($view, $this->allowedViews(), true)) {
             $this->view = $view;
         }
     }
 
     public function setView(string $view): void
     {
-        if (in_array($view, ['month', 'week', 'day', 'agenda'], true)) {
+        if (in_array($view, $this->allowedViews(), true)) {
             $this->view = $view;
         }
     }
@@ -70,6 +70,7 @@ class CalendarDashboard extends Component
         $this->focusDate = match ($this->view) {
             'week' => $date->subWeek()->toDateString(),
             'day' => $date->subDay()->toDateString(),
+            'year' => $date->subYear()->toDateString(),
             default => $date->subMonth()->toDateString(),
         };
     }
@@ -80,8 +81,16 @@ class CalendarDashboard extends Component
         $this->focusDate = match ($this->view) {
             'week' => $date->addWeek()->toDateString(),
             'day' => $date->addDay()->toDateString(),
+            'year' => $date->addYear()->toDateString(),
             default => $date->addMonth()->toDateString(),
         };
+    }
+
+    #[On('calendar-focus-month')]
+    public function focusMonth(string $date): void
+    {
+        $this->focusDate = Carbon::parse($date)->startOfMonth()->toDateString();
+        $this->view = 'month';
     }
 
     public function openCreate(?string $date = null): void
@@ -134,5 +143,13 @@ class CalendarDashboard extends Component
             ->whereHas('roles', fn ($q) => $q->whereIn('slug', ['consultant', 'manager', 'team-admin', 'admin']))
             ->orderBy('name')
             ->get(['id', 'name']);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function allowedViews(): array
+    {
+        return ['year', 'month', 'week', 'day', 'agenda'];
     }
 }

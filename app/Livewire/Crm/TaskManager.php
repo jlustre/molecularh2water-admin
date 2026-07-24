@@ -26,6 +26,8 @@ class TaskManager extends Component
 
     public string $priorityFilter = '';
 
+    public string $duePreset = '';
+
     public bool $showForm = false;
 
     public ?int $editingTaskId = null;
@@ -51,6 +53,11 @@ class TaskManager extends Component
         if ($lead) {
             $this->lead_id = $lead;
         }
+    }
+
+    public function updatingDuePreset(): void
+    {
+        $this->resetPage();
     }
 
     public function openForm(?int $taskId = null): void
@@ -134,6 +141,20 @@ class TaskManager extends Component
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->priorityFilter, fn ($q) => $q->where('priority', $this->priorityFilter))
             ->when($this->lead_id, fn ($q) => $q->whereLeadId($this->lead_id))
+            ->when($this->duePreset === 'today', function ($q) {
+                $q->whereDate('due_at', today())
+                    ->where('status', '!=', TaskStatus::Completed->value);
+            })
+            ->when($this->duePreset === 'overdue', function ($q) {
+                $q->whereNotNull('due_at')
+                    ->where('due_at', '<', now()->startOfDay())
+                    ->where('status', '!=', TaskStatus::Completed->value);
+            })
+            ->when($this->duePreset === 'upcoming', function ($q) {
+                $q->whereNotNull('due_at')
+                    ->where('due_at', '>', now()->endOfDay())
+                    ->where('status', '!=', TaskStatus::Completed->value);
+            })
             ->orderByRaw("CASE WHEN status = 'completed' THEN 1 ELSE 0 END")
             ->orderBy('due_at')
             ->paginate(config('crm.pagination.tasks', 20));

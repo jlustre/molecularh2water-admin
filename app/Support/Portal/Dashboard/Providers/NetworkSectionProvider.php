@@ -3,29 +3,19 @@
 namespace App\Support\Portal\Dashboard\Providers;
 
 use App\Contracts\Portal\PortalDashboardSectionProvider;
-use App\Models\Crm\Appointment;
-use App\Models\Crm\CalendarEvent;
-use App\Models\Crm\Prospect;
-use App\Models\Crm\Referral;
-use App\Models\Crm\Task;
-use App\Models\RegistrationInvite;
 use App\Models\User;
 use App\Services\Crm\DashboardStatsService;
-use App\Services\Portal\MeetingService;
 use App\Services\Portal\PhoneCallService;
-use App\Support\Crm\CalendarScope;
-use App\Support\Crm\CrmScope;
+use App\Support\Crm\CrmRoutes;
 use App\Support\Portal\Dashboard\PortalDashboardCard;
 use App\Support\Portal\Dashboard\PortalDashboardSection;
 use App\Support\Portal\PortalRainbowTone;
-use Illuminate\Support\Facades\Schema;
 
 class NetworkSectionProvider implements PortalDashboardSectionProvider
 {
     public function __construct(
         private DashboardStatsService $stats,
         private PhoneCallService $phoneCalls,
-        private MeetingService $meetings,
     ) {}
 
     public function priority(): int
@@ -35,130 +25,142 @@ class NetworkSectionProvider implements PortalDashboardSectionProvider
 
     public function section(User $user): ?PortalDashboardSection
     {
+        $week = $this->stats->weeklyGrowth(
+            $user,
+            $this->phoneCalls->phoneCallTypeSlugs(),
+        );
+
+        $weekLabel = $week['weekStart']->format('M j').' – '.$week['weekEnd']->format('M j');
         $cards = [];
-        $metrics = $user->hasPermission('leads.view') && Schema::hasTable('leads')
-            ? $this->stats->get($user)
-            : null;
 
         if ($user->hasPermission('sponsors.view-tree')) {
-            $cards[] = new PortalDashboardCard(
-                label: 'Team Members',
-                value: (string) $user->sponsoredUsers()->count(),
-                hint: 'Direct members in your sponsor tree',
-                route: route('portal.team'),
-                tone: 'teal',
-                icon: 'users',
+            $cards[] = $this->card(
+                'Team Members',
+                $week['teamMembers'],
+                'New direct recruits this week',
+                route('portal.team'),
+                'teal',
+                'users',
             );
         }
 
-        if ($user->hasPermission('invites.manage')) {
-            $activeInvites = RegistrationInvite::query()
-                ->where('sponsor_id', $user->id)
-                ->available()
-                ->count();
-
-            $cards[] = new PortalDashboardCard(
-                label: 'Member Invites',
-                value: (string) $activeInvites,
-                hint: 'Active codes ready to share',
-                tone: PortalRainbowTone::forAction('open-member-invites'),
-                icon: 'ticket',
-                action: 'open-member-invites',
+        if ($user->hasPermission('prospects.view')) {
+            $cards[] = $this->card(
+                'Prospects',
+                $week['prospects'],
+                'New prospects this week',
+                null,
+                PortalRainbowTone::forAction('open-prospects'),
+                'user-plus',
+                'open-prospects',
             );
         }
 
-        if ($user->hasPermission('prospects.view') && Schema::hasTable('prospects')) {
-            $prospectCount = $metrics['activeProspects']
-                ?? CrmScope::contacts(Prospect::query(), $user)->count();
-
-            $cards[] = new PortalDashboardCard(
-                label: 'Prospects',
-                value: number_format((int) $prospectCount),
-                hint: 'Prospects in your workspace',
-                tone: PortalRainbowTone::forAction('open-prospects'),
-                icon: 'user-plus',
-                action: 'open-prospects',
+        if ($user->hasPermission('leads.view') || $user->hasPermission('activities.view')) {
+            $cards[] = $this->card(
+                'Invites',
+                $week['invites'],
+                'Prospects invited to a presentation this week',
+                null,
+                'violet',
+                'ticket',
             );
         }
 
         if ($user->hasPermission('leads.view')) {
-            $demoCount = (int) ($metrics['demosToday'] ?? 0);
+            $leadsRoute = route(CrmRoutes::name('leads.index'));
 
-            $cards[] = new PortalDashboardCard(
-                label: 'Demos',
-                value: number_format($demoCount),
-                hint: 'Demos scheduled for today',
-                tone: PortalRainbowTone::forAction('open-demos'),
-                icon: 'play',
-                action: 'open-demos',
+            $cards[] = $this->card(
+                'Leads',
+                $week['leads'],
+                'New leads this week',
+                $leadsRoute,
+                'cyan',
+                'sparkles',
+            );
+
+            $cards[] = $this->card(
+                'Follow-Ups',
+                $week['followUps'],
+                'Follow-ups due this week',
+                $leadsRoute,
+                'orange',
+                'bell',
+            );
+
+            $cards[] = $this->card(
+                'Schedule Presentations',
+                $week['schedulePresentations'],
+                'Presentations scheduled this week',
+                null,
+                PortalRainbowTone::forAction('open-demos'),
+                'calendar',
+                'open-demos',
+            );
+
+            $cards[] = $this->card(
+                'Actual Presentation',
+                $week['presentations'],
+                'Presentations completed this week',
+                null,
+                'yellow',
+                'play',
+            );
+
+            $cards[] = $this->card(
+                'Closed Sales',
+                $week['closedSales'],
+                'Won opportunities this week',
+                $leadsRoute,
+                'emerald',
+                'chart',
             );
         }
 
-        if ($user->hasPermission('calendar.view') && Schema::hasTable('calendar_events')) {
-            $cards[] = new PortalDashboardCard(
-                label: 'Phone Calls',
-                value: number_format($this->upcomingEventCount($user, $this->phoneCalls->phoneCallTypeSlugs())),
-                hint: 'Upcoming phone calls',
-                tone: PortalRainbowTone::forAction('open-phone-calls'),
-                icon: 'bell',
-                action: 'open-phone-calls',
-            );
-
-            $cards[] = new PortalDashboardCard(
-                label: 'Meetings',
-                value: number_format($this->upcomingEventCount($user, $this->meetings->meetingTypeSlugs())),
-                hint: 'Upcoming meetings',
-                tone: PortalRainbowTone::forAction('open-meetings'),
-                icon: 'users',
-                action: 'open-meetings',
+        if ($user->hasPermission('sales.view') || $user->hasPermission('sales.manage')) {
+            $cards[] = $this->card(
+                'Completed Sales',
+                $week['completedSales'],
+                'Member sales completed this week',
+                route(CrmRoutes::name('sales.index')),
+                'green',
+                'check',
             );
         }
 
-        if ($user->hasPermission('appointments.view') && Schema::hasTable('appointments')) {
-            $appointmentCount = $metrics['appointmentsToday']
-                ?? CrmScope::appointments(Appointment::query(), $user)
-                    ->whereDate('starts_at', now()->toDateString())
-                    ->count();
-
-            $cards[] = new PortalDashboardCard(
-                label: 'Appointments',
-                value: number_format((int) $appointmentCount),
-                hint: 'Appointments scheduled today',
-                tone: PortalRainbowTone::forAction('open-appointments'),
-                icon: 'calendar',
-                action: 'open-appointments',
+        if ($user->hasPermission('calendar.view')) {
+            $cards[] = $this->card(
+                'Phone Calls',
+                $week['phoneCalls'],
+                'Phone calls this week',
+                null,
+                PortalRainbowTone::forAction('open-phone-calls'),
+                'bell',
+                'open-phone-calls',
             );
         }
 
-        if ($user->hasPermission('tasks.view') && Schema::hasTable('tasks')) {
-            $openTasks = CrmScope::tasks(Task::query(), $user)
-                ->whereIn('status', ['pending', 'in_progress'])
-                ->count();
-
-            $cards[] = new PortalDashboardCard(
-                label: 'Tasks',
-                value: number_format($openTasks),
-                hint: 'Open tasks needing action',
-                tone: PortalRainbowTone::forAction('open-tasks'),
-                icon: 'check',
-                action: 'open-tasks',
+        if ($user->hasPermission('appointments.view')) {
+            $cards[] = $this->card(
+                'Appointments',
+                $week['appointments'],
+                'Appointments this week',
+                null,
+                PortalRainbowTone::forAction('open-appointments'),
+                'calendar',
+                'open-appointments',
             );
         }
 
-        if ($user->hasPermission('clients.view') && Schema::hasTable('referrals')) {
-            $referralQuery = Referral::query();
-
-            if (! $user->canViewAllCrmRecords()) {
-                $referralQuery->where('user_id', $user->id);
-            }
-
-            $cards[] = new PortalDashboardCard(
-                label: 'Referrals/Leads',
-                value: number_format($referralQuery->count()),
-                hint: 'Referrals and leads logged in CRM',
-                tone: PortalRainbowTone::forAction('open-referrals'),
-                icon: 'sparkles',
-                action: 'open-referrals',
+        if ($user->hasPermission('tasks.view')) {
+            $cards[] = $this->card(
+                'Tasks',
+                $week['tasks'],
+                'Tasks due or created this week',
+                null,
+                PortalRainbowTone::forAction('open-tasks'),
+                'check',
+                'open-tasks',
             );
         }
 
@@ -168,25 +170,34 @@ class NetworkSectionProvider implements PortalDashboardSectionProvider
 
         return new PortalDashboardSection(
             key: 'network',
-            title: 'Network & Growth',
-            description: 'Quick-action metrics with matching colors for your most-used portal tools.',
+            title: 'Network & Growth This Week',
+            description: 'Weekly network, pipeline, and field activity ('.$weekLabel.').',
             priority: $this->priority(),
             cards: $cards,
         );
     }
 
-    /**
-     * @param  list<string>  $typeSlugs
-     */
-    private function upcomingEventCount(User $user, array $typeSlugs): int
-    {
-        if ($typeSlugs === []) {
-            return 0;
-        }
+    private function card(
+        string $label,
+        int|float|string $value,
+        string $hint,
+        ?string $route,
+        string $tone,
+        string $icon,
+        ?string $action = null,
+    ): PortalDashboardCard {
+        $formatted = is_numeric($value)
+            ? number_format((float) $value, is_float($value) && floor($value) != $value ? 1 : 0)
+            : (string) $value;
 
-        return CalendarScope::events(CalendarEvent::query(), $user)
-            ->whereHas('type', fn ($query) => $query->whereIn('slug', $typeSlugs))
-            ->where('start_at', '>=', now())
-            ->count();
+        return new PortalDashboardCard(
+            label: $label,
+            value: $formatted,
+            hint: $hint,
+            route: $route,
+            tone: $tone,
+            icon: $icon,
+            action: $action,
+        );
     }
 }

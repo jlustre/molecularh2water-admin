@@ -6,6 +6,7 @@ use App\Livewire\Crm\Concerns\UsesCrmLayout;
 use App\Models\Crm\Funnel;
 use App\Models\Crm\FunnelStage;
 use App\Services\Crm\FunnelService;
+use App\Support\Crm\PipelineContacts;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -178,8 +179,12 @@ class FunnelManager extends Component
             : collect();
 
         $stages = $this->funnel()
-            ? $this->funnel()->stages()->withCount('leads')->get()
+            ? $this->funnel()->stages()->orderBy('sort_order')->get()
             : collect();
+
+        $stages->each(function (FunnelStage $stage) {
+            $stage->leads_count = PipelineContacts::countForStage($stage->id);
+        });
 
         return view('livewire.crm.funnel-manager', [
             'funnels' => $funnels,

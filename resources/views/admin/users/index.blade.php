@@ -34,10 +34,10 @@
                         <a href="{{ route('admin.users.hierarchy') }}" class="inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-5 py-3 text-sm font-bold text-teal-800 shadow-sm transition hover:bg-teal-50">
                             View Hierarchy
                         </a>
-                        @if (auth()->user()?->hasPermission('users.export'))
+                        @if (auth()->user()?->isSuperAdmin() && auth()->user()?->hasPermission('users.export'))
                             <form method="POST" action="{{ route('admin.users.update-seeder') }}">
                                 @csrf
-                                <button type="submit" class="inline-flex w-full items-center justify-center rounded-md border border-teal-200/30 bg-white/[0.08] px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.12]" title="Write current users into the seeder so they survive migrate:fresh --seed">
+                                <button type="submit" class="inline-flex w-full items-center justify-center rounded-md border border-teal-200/30 bg-white/[0.08] px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.12]" title="Developer tool: write current users into the seeder">
                                     Update users seeder
                                 </button>
                             </form>
@@ -74,12 +74,24 @@
                     <h2 class="mt-2 text-2xl font-black tracking-normal text-slate-950">User accounts</h2>
                 </div>
 
-                <form method="GET" action="{{ route('admin.users.index') }}" class="grid gap-2 md:grid-cols-2 xl:flex">
-                    <input name="search" type="search" value="{{ request('search') }}" class="rounded-full border border-teal-100 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-teal-400 focus:ring-teal-400 xl:w-72" placeholder="Search name or email...">
+                <form method="GET" action="{{ route('admin.users.index') }}" class="grid gap-2 md:grid-cols-2 xl:flex xl:flex-wrap">
+                    <input name="search" type="search" value="{{ request('search') }}" class="rounded-full border border-teal-100 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-teal-400 focus:ring-teal-400 xl:w-56" placeholder="Search name or email...">
                     <select name="status" class="rounded-full border border-teal-100 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-teal-400 focus:ring-teal-400">
                         <option value="">All statuses</option>
                         <option value="verified" @selected(request('status') === 'verified')>Verified</option>
                         <option value="unverified" @selected(request('status') === 'unverified')>Unverified</option>
+                    </select>
+                    <select name="role" class="rounded-full border border-teal-100 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-teal-400 focus:ring-teal-400">
+                        <option value="">All roles</option>
+                        @foreach ($roles as $role)
+                            <option value="{{ $role->slug }}" @selected(request('role') === $role->slug)>{{ $role->name }}</option>
+                        @endforeach
+                    </select>
+                    <select name="business_line" class="rounded-full border border-teal-100 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-teal-400 focus:ring-teal-400">
+                        <option value="">All business lines</option>
+                        @foreach ($businessLines as $line)
+                            <option value="{{ $line->value }}" @selected(request('business_line') === $line->value)>{{ $line->label() }}</option>
+                        @endforeach
                     </select>
                     <select name="joined" class="rounded-full border border-teal-100 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-teal-400 focus:ring-teal-400">
                         <option value="">Any joined date</option>

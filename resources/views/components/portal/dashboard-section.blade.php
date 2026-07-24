@@ -14,7 +14,7 @@
 
     <div @class([
         'grid gap-4',
-        'grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8' => $section->key === 'network',
+        'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6' => $section->key === 'network',
         'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4' => $section->key !== 'network',
     ])>
         @foreach ($section->cards as $card)

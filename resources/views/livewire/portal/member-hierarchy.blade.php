@@ -5,7 +5,7 @@
         <p class="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Sponsor Network</p>
         <h2 class="mt-1 text-2xl font-bold text-slate-900">Member hierarchy</h2>
         <p class="mt-1 max-w-2xl text-sm text-slate-600">
-            Your sponsor chain and everyone you have personally sponsored.
+            Your sponsor chain and everyone you have personally sponsored. Click a member to open their coaching overview.
         </p>
     </div>
 

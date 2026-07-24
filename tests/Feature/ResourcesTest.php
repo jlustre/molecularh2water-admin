@@ -33,8 +33,8 @@ it('shows published admin media to authenticated users as read-only resources', 
         ->assertSee('Resource Center')
         ->assertSee('Published Hydrogen Guide')
         ->assertSee('Open Link')
-        ->assertSee('Share Link')
-        ->assertSee(route('media.show', $publishedMedia), false)
+        ->assertSee('Copy Link')
+        ->assertSee('https://example.com/published-guide.pdf', false)
         ->assertDontSee('Draft Internal Notes')
         ->assertDontSee('Edit')
         ->assertDontSee('Delete');

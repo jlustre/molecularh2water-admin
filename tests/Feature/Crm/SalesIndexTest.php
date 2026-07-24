@@ -1,11 +1,7 @@
 <?php
 
-use App\Enums\Crm\OrderStatus;
-use App\Enums\Crm\PaymentStatus;
-use App\Enums\Crm\QuotationStatus;
-use App\Models\Crm\Order;
-use App\Models\Crm\Prospect;
-use App\Models\Crm\Quotation;
+use App\Enums\Crm\MemberSaleStatus;
+use App\Models\Crm\MemberSale;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Portal\PortalNavigation;
@@ -32,99 +28,69 @@ function salesAgent(string $name = 'Sales Agent'): User
     return $user;
 }
 
-it('places sales after activities in portal navigation', function () {
+it('places a single consultant sales link after activities in portal navigation', function () {
     $agent = salesAgent();
     $labels = collect(PortalNavigation::links($agent))->pluck('label')->values()->all();
 
-    expect($labels)->toContain('Sales')
-        ->and(array_search('Sales', $labels, true))
-        ->toBe(array_search('Activities', $labels, true) + 1);
+    expect($labels)->toContain('Consultant Sales')
+        ->and($labels)->not->toContain('Orders & Quotes')
+        ->and(collect($labels)->filter(fn ($label) => $label === 'Consultant Sales')->count())->toBe(1)
+        ->and(array_search('Consultant Sales', $labels, true))
+        ->toBeGreaterThan(array_search('Activities', $labels, true));
 });
 
-it('renders the sales page for admins and agents', function () {
+it('renders the consultant sales page for admins and agents', function () {
     $admin = salesAdmin();
     $agent = salesAgent();
 
     $this->actingAs($admin)
         ->get(route('admin.crm.sales.index'))
         ->assertOk()
-        ->assertSee('Sales')
-        ->assertSee('Recent Orders')
-        ->assertSee('Recent Quotations')
-        ->assertSee('Revenue');
+        ->assertSee('Consultant Sales')
+        ->assertSee('Consultant')
+        ->assertSee('Demo consultant')
+        ->assertSee('Add Sale');
 
     $this->actingAs($agent)
         ->get(route('portal.crm.sales.index'))
         ->assertOk()
-        ->assertSee('Sales')
-        ->assertSee('Recent Orders');
+        ->assertSee('Consultant Sales')
+        ->assertDontSee('Add Sale');
 });
 
-it('shows scoped orders and quotations on the sales page', function () {
+it('shows scoped consultant sales on the sales page', function () {
     $agent = salesAgent();
     $other = salesAgent('Other Sales Agent');
+    $demo = salesAgent('Demo Helper');
 
-    $mine = Prospect::factory()->assignedTo($agent)->create([
-        'first_name' => 'Mine',
-        'last_name' => 'Contact',
-    ]);
-    $theirs = Prospect::factory()->assignedTo($other)->create([
-        'first_name' => 'Theirs',
-        'last_name' => 'Contact',
-    ]);
-
-    Order::query()->create([
-        'contact_type' => $mine->getMorphClass(),
-        'contact_id' => $mine->id,
+    MemberSale::query()->create([
         'user_id' => $agent->id,
-        'order_number' => 'O-SALES-MINE',
-        'status' => OrderStatus::Submitted,
-        'payment_status' => PaymentStatus::Paid,
-        'subtotal' => 1200,
+        'demo_consultant_id' => $demo->id,
+        'customer_name' => 'Mine Contact',
+        'status' => MemberSaleStatus::Approved,
+        'business_line' => 'both',
+        'approved_at' => now(),
+        'application_started_at' => now()->subDay(),
+        'created_by' => $agent->id,
         'total' => 1200,
-        'amount_paid' => 1200,
-        'paid_at' => now(),
     ]);
 
-    Quotation::query()->create([
-        'contact_type' => $mine->getMorphClass(),
-        'contact_id' => $mine->id,
-        'user_id' => $agent->id,
-        'quote_number' => 'Q-SALES-MINE',
-        'status' => QuotationStatus::Presented,
-        'subtotal' => 900,
-        'total' => 900,
-    ]);
-
-    Order::query()->create([
-        'contact_type' => $theirs->getMorphClass(),
-        'contact_id' => $theirs->id,
+    MemberSale::query()->create([
         'user_id' => $other->id,
-        'order_number' => 'O-SALES-THEIRS',
-        'status' => OrderStatus::Submitted,
-        'payment_status' => PaymentStatus::Pending,
-        'subtotal' => 500,
+        'customer_name' => 'Theirs Contact',
+        'status' => MemberSaleStatus::ApplicationStarted,
+        'business_line' => 'both',
+        'application_started_at' => now(),
+        'created_by' => $other->id,
         'total' => 500,
     ]);
 
-    Quotation::query()->create([
-        'contact_type' => $theirs->getMorphClass(),
-        'contact_id' => $theirs->id,
-        'user_id' => $other->id,
-        'quote_number' => 'Q-SALES-THEIRS',
-        'status' => QuotationStatus::Draft,
-        'subtotal' => 400,
-        'total' => 400,
-    ]);
-
     $this->actingAs($agent)
         ->get(route('portal.crm.sales.index'))
         ->assertOk()
-        ->assertSee('O-SALES-MINE')
-        ->assertSee('Q-SALES-MINE')
         ->assertSee('Mine Contact')
-        ->assertDontSee('O-SALES-THEIRS')
-        ->assertDontSee('Q-SALES-THEIRS')
+        ->assertSee($agent->name)
+        ->assertSee($demo->name)
         ->assertDontSee('Theirs Contact');
 });
 
@@ -135,4 +101,12 @@ it('denies access without sales.view permission', function () {
     $this->actingAs($editor)
         ->get(route('portal.crm.sales.index'))
         ->assertForbidden();
+});
+
+it('redirects the legacy member-sales url to consultant sales', function () {
+    $admin = salesAdmin();
+
+    $this->actingAs($admin)
+        ->get(route('admin.crm.member-sales.index'))
+        ->assertRedirect(route('admin.crm.sales.index'));
 });

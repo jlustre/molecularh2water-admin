@@ -188,6 +188,14 @@ return [
         'pending' => 'demo-completed',
     ],
 
+    'default_product_categories' => [
+        ['name' => 'H2 Machines', 'kind' => 'product', 'sort_order' => 1],
+        ['name' => 'Cookware', 'kind' => 'product', 'sort_order' => 2],
+        ['name' => 'Accessories', 'kind' => 'product', 'sort_order' => 3],
+        ['name' => 'Services', 'kind' => 'product', 'sort_order' => 4],
+        ['name' => 'Gifts', 'kind' => 'gift', 'sort_order' => 5],
+    ],
+
     'default_products' => [
         [
             'sku' => 'H2-ULTRA-PRO',
@@ -227,7 +235,28 @@ return [
             'category' => 'Services',
             'description' => 'On-site installation and water quality calibration.',
             'unit_price' => 199.00,
+            'inventory_quantity' => 50,
             'sort_order' => 5,
+        ],
+        [
+            'sku' => 'GIFT-WELCOME',
+            'name' => 'Welcome Gift Basket',
+            'kind' => 'gift',
+            'category' => 'Gifts',
+            'description' => 'Starter gift bundle for new customers.',
+            'unit_price' => 75.00,
+            'inventory_quantity' => 25,
+            'sort_order' => 10,
+        ],
+        [
+            'sku' => 'GIFT-REFERRAL',
+            'name' => 'Referral Thank-You Gift',
+            'kind' => 'gift',
+            'category' => 'Gifts',
+            'description' => 'Gift given for successful referrals.',
+            'unit_price' => 50.00,
+            'inventory_quantity' => 40,
+            'sort_order' => 11,
         ],
     ],
 
@@ -238,6 +267,17 @@ return [
     ],
 
     'closed_won_stage_slug' => 'closed-won',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sales funnel — Lead → Prospect conversion
+    |--------------------------------------------------------------------------
+    |
+    | Contacts on earlier sales-funnel stages stay Leads. Moving to this stage
+    | (or any later stage) converts them to Prospects.
+    |
+    */
+    'prospect_conversion_stage_slug' => 'qualified',
 
     'after_sales_funnel_slug' => 'after-sales-funnel',
     'after_sales_entry_stage' => 'warranty-registration',
@@ -618,11 +658,11 @@ return [
 
             'demonstration.scheduled' => [
 
-                ['action' => 'move_stage', 'stage_slug' => 'demo-scheduled'],
-
                 ['action' => 'calendar_event', 'event_type' => 'home-demo', 'title' => 'Demo: {{lead_name}}'],
 
                 ['action' => 'notify_assignee', 'notification' => 'demo_scheduled'],
+
+                ['action' => 'move_stage', 'stage_slug' => 'demo-scheduled'],
 
             ],
 

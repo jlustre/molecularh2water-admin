@@ -3,15 +3,21 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Mail\InstallationQuestionnaireSubmitted;
 use App\Models\InstallationQuestionnaire;
+use App\Services\EmailMappingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 
 class InstallationQuestionnaireController extends Controller
 {
+    private const MAX_SINK_PHOTOS = 8;
+
+    public function __construct(
+        private readonly EmailMappingService $emailMappings,
+    ) {}
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -65,27 +71,23 @@ class InstallationQuestionnaireController extends Controller
             'special_requirements' => ['nullable', 'string', 'max:5000'],
             'additional_notes' => ['nullable', 'string', 'max:5000'],
             'sink_photo' => ['nullable', 'image', 'max:10240'],
+            'sink_photos' => ['nullable', 'array', 'max:'.self::MAX_SINK_PHOTOS],
+            'sink_photos.*' => ['image', 'max:10240'],
         ]);
 
-        $sinkPhotoPath = null;
-        $sinkPhotoOriginalName = null;
+        $uploadedPhotos = $this->storeSinkPhotos($request);
 
-        if ($request->hasFile('sink_photo')) {
-            $file = $request->file('sink_photo');
-            $sinkPhotoPath = $file->store('installation-questionnaires', 'public');
-            $sinkPhotoOriginalName = $file->getClientOriginalName();
-        }
+        $firstPhoto = $uploadedPhotos[0] ?? null;
 
         $questionnaire = InstallationQuestionnaire::create([
-            ...collect($validated)->except(['sink_photo'])->all(),
+            ...collect($validated)->except(['sink_photo', 'sink_photos'])->all(),
             'existing_equipment' => $validated['existing_equipment'] ?? [],
-            'sink_photo_path' => $sinkPhotoPath,
-            'sink_photo_original_name' => $sinkPhotoOriginalName,
+            'sink_photos' => $uploadedPhotos,
+            'sink_photo_path' => $firstPhoto['path'] ?? null,
+            'sink_photo_original_name' => $firstPhoto['original_name'] ?? null,
         ]);
 
-        Mail::to('shipping@happycooking.com')->send(
-            new InstallationQuestionnaireSubmitted($questionnaire),
-        );
+        $this->emailMappings->notifyInstallationQuestionnaire($questionnaire);
 
         return response()->json([
             'message' => 'Thank you. Your pre-installation questionnaire has been submitted.',
@@ -94,5 +96,36 @@ class InstallationQuestionnaireController extends Controller
                 'submitted_at' => $questionnaire->created_at?->toIso8601String(),
             ],
         ], 201);
+    }
+
+    /**
+     * @return list<array{path: string, original_name: string}>
+     */
+    private function storeSinkPhotos(Request $request): array
+    {
+        /** @var list<UploadedFile> $files */
+        $files = [];
+
+        if ($request->hasFile('sink_photos')) {
+            $uploaded = $request->file('sink_photos');
+            $files = is_array($uploaded) ? array_values($uploaded) : [$uploaded];
+        } elseif ($request->hasFile('sink_photo')) {
+            $files = [$request->file('sink_photo')];
+        }
+
+        $photos = [];
+
+        foreach (array_slice($files, 0, self::MAX_SINK_PHOTOS) as $file) {
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $photos[] = [
+                'path' => $file->store('installation-questionnaires', 'public'),
+                'original_name' => $file->getClientOriginalName(),
+            ];
+        }
+
+        return $photos;
     }
 }

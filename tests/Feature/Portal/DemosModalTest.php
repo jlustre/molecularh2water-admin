@@ -261,6 +261,7 @@ it('creates a prospect and schedules a demo when confirmed', function () {
 
     expect($lead)->not->toBeNull()
         ->and($lead->lifecycle?->value)->toBe('prospect')
+        ->and($lead->stage?->slug)->toBe('demo-scheduled')
         ->and(Demonstration::query()->whereContact($lead)->exists())->toBeTrue();
 });
 

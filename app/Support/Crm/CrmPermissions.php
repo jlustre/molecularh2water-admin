@@ -75,6 +75,21 @@ class CrmPermissions
                     'faqs.manage' => 'Manage FAQs',
                 ],
             ],
+            'warranty' => [
+                'label' => 'Warranty Registrations',
+                'items' => [
+                    'warranty.view' => 'View warranty registrations',
+                    'warranty.manage' => 'Manage warranty registrations',
+                    'warranty.export' => 'Update warranty seeder',
+                ],
+            ],
+            'installation_questionnaires' => [
+                'label' => 'Installation Questionnaires',
+                'items' => [
+                    'installation-questionnaires.view' => 'View installation questionnaires',
+                    'installation-questionnaires.manage' => 'Manage installation questionnaires',
+                ],
+            ],
             'leads' => [
                 'label' => 'Leads',
                 'items' => [
@@ -128,7 +143,10 @@ class CrmPermissions
             'sales' => [
                 'label' => 'Sales',
                 'items' => [
-                    'sales.view' => 'View sales overview (orders and quotations)',
+                    'sales.view' => 'View member sales (scoped)',
+                    'sales.manage' => 'Manage member sales and inventory',
+                    'products.view' => 'View product and gift catalog',
+                    'products.manage' => 'Manage products, gifts, categories, and inventory',
                 ],
             ],
             'tasks' => [
@@ -143,7 +161,21 @@ class CrmPermissions
                 'items' => [
                     'appointments.view' => 'View appointments',
                     'appointments.manage' => 'Manage appointments',
+                ],
+            ],
+            'website_forms' => [
+                'label' => 'Website Forms',
+                'items' => [
+                    'website-forms.view' => 'View website form submissions',
+                    'website-forms.manage' => 'Create and update website form submissions',
                     'messages.manage' => 'Manage contact messages (legacy)',
+                ],
+            ],
+            'email_mappings' => [
+                'label' => 'Email Mappings',
+                'items' => [
+                    'email-mappings.view' => 'View form notification email mappings',
+                    'email-mappings.manage' => 'Create and update form notification email mappings',
                 ],
             ],
             'calendar' => [
@@ -177,6 +209,13 @@ class CrmPermissions
                     'crm.settings.manage' => 'Manage CRM settings',
                     'notifications.view' => 'View notifications',
                     'settings.manage' => 'Manage system settings',
+                ],
+            ],
+            'roles' => [
+                'label' => 'Roles & Permissions',
+                'items' => [
+                    'roles.view' => 'View roles & permissions',
+                    'roles.manage' => 'Create and update roles',
                 ],
             ],
             'portal' => [
@@ -214,6 +253,7 @@ class CrmPermissions
             'activities.view',
             'activities.manage',
             'sales.view',
+            'products.view',
             'tasks.view',
             'tasks.manage',
             'appointments.view',
@@ -257,6 +297,7 @@ class CrmPermissions
                 'activities.view',
                 'activities.manage',
                 'sales.view',
+                'products.view',
                 'tasks.view',
                 'tasks.manage',
                 'appointments.view',

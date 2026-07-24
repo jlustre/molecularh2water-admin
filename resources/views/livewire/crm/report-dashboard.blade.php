@@ -12,6 +12,13 @@
                 <option value="90d">Last 90 days</option>
                 <option value="all">All time</option>
             </select>
+            <button
+                class="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                type="button"
+                wire:click="exportCsv"
+            >
+                Export CSV
+            </button>
             @if (auth()->user()?->hasPermission('crm.dashboard.view'))
                 <a
                     class="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"

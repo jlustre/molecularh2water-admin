@@ -40,9 +40,11 @@
                         </p>
                     </div>
 
-                    <a href="{{ route('admin.roles.create') }}" class="inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-3 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">
-                        Add Role
-                    </a>
+                    @if (auth()->user()?->hasPermission('roles.manage'))
+                        <a href="{{ route('admin.roles.create') }}" class="inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-3 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">
+                            Add Role
+                        </a>
+                    @endif
                 </div>
             </div>
         </section>
@@ -144,20 +146,22 @@
                                 <td class="px-4 py-4 text-slate-500">{{ $role->updated_at?->diffForHumans() }}</td>
                                 <td class="px-4 py-4">
                                     <div class="flex flex-wrap justify-end gap-2">
-                                        <a href="{{ route('admin.roles.edit', $role) }}" aria-label="Edit" title="Edit" class="group relative inline-flex size-9 items-center justify-center rounded-md border border-teal-100 bg-white text-teal-700 transition hover:bg-teal-50 hover:text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-300">
-                                            <svg class="size-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4 20 4.5-1 10-10a2.12 2.12 0 0 0-3-3l-10 10L4 20Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m14 7 3 3"/></svg>
-                                            <span class="sr-only">Edit</span>
-                                            <span class="pointer-events-none absolute bottom-full right-0 z-10 mb-2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-bold text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus:opacity-100">Edit</span>
-                                        </a>
-                                        <form method="POST" action="{{ route('admin.roles.destroy', $role) }}" onsubmit="return confirm('Delete this role?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" aria-label="Delete" title="Delete" @disabled($role->is_system) class="group relative inline-flex size-9 items-center justify-center rounded-md border border-red-100 bg-white text-red-600 transition hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300">
-                                                <svg class="size-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 7h14M10 11v6M14 11v6M8 7l1-3h6l1 3M7 7l1 13h8l1-13"/></svg>
-                                                <span class="sr-only">Delete</span>
-                                                <span class="pointer-events-none absolute bottom-full right-0 z-10 mb-2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-bold text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus:opacity-100">Delete</span>
-                                            </button>
-                                        </form>
+                                        @if (auth()->user()?->hasPermission('roles.manage'))
+                                            <a href="{{ route('admin.roles.edit', $role) }}" aria-label="Edit" title="Edit" class="group relative inline-flex size-9 items-center justify-center rounded-md border border-teal-100 bg-white text-teal-700 transition hover:bg-teal-50 hover:text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-300">
+                                                <svg class="size-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4 20 4.5-1 10-10a2.12 2.12 0 0 0-3-3l-10 10L4 20Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m14 7 3 3"/></svg>
+                                                <span class="sr-only">Edit</span>
+                                                <span class="pointer-events-none absolute bottom-full right-0 z-10 mb-2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-bold text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus:opacity-100">Edit</span>
+                                            </a>
+                                            <form method="POST" action="{{ route('admin.roles.destroy', $role) }}" onsubmit="return confirm('Delete this role?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" aria-label="Delete" title="Delete" @disabled($role->is_system) class="group relative inline-flex size-9 items-center justify-center rounded-md border border-red-100 bg-white text-red-600 transition hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-300">
+                                                    <svg class="size-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 7h14M10 11v6M14 11v6M8 7l1-3h6l1 3M7 7l1 13h8l1-13"/></svg>
+                                                    <span class="sr-only">Delete</span>
+                                                    <span class="pointer-events-none absolute bottom-full right-0 z-10 mb-2 whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-bold text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus:opacity-100">Delete</span>
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -166,9 +170,11 @@
                                 <td colspan="6" class="px-4 py-12 text-center">
                                     <p class="text-base font-bold text-slate-900">No roles found</p>
                                     <p class="mt-1 text-sm text-slate-500">Create your first access profile.</p>
-                                    <a href="{{ route('admin.roles.create') }}" class="mt-4 inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-2.5 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">
-                                        Add Role
-                                    </a>
+                                    @if (auth()->user()?->hasPermission('roles.manage'))
+                                        <a href="{{ route('admin.roles.create') }}" class="mt-4 inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-2.5 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">
+                                            Add Role
+                                        </a>
+                                    @endif
                                 </td>
                             </tr>
                         @endforelse

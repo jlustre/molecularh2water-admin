@@ -62,7 +62,7 @@ class PortalAppointmentService
         return $this->phoneCalls->findContactMatch($name, $user);
     }
 
-    public function contactById(int $leadId, ?User $user = null): ?Lead
+    public function contactById(int $leadId, ?User $user = null): Lead|Prospect|Customer|Recruit|null
     {
         $user ??= auth()->user();
 
@@ -70,7 +70,7 @@ class PortalAppointmentService
             return null;
         }
 
-        return CrmScope::leads(Lead::query(), $user)->find($leadId);
+        return $this->findContactById($leadId, $user);
     }
 
     /**

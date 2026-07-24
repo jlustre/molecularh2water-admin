@@ -38,7 +38,8 @@ class OrderService
                 'contact_type' => $quotation->contact_type,
                 'contact_id' => $quotation->contact_id,
                 'quotation_id' => $quotation->id,
-                'user_id' => $user->id,
+                'user_id' => $quotation->user_id ?: $user->id,
+                'demo_consultant_id' => $quotation->demo_consultant_id,
                 'order_number' => $this->generateOrderNumber(),
                 'status' => OrderStatus::Draft,
                 'payment_status' => PaymentStatus::Pending,
@@ -81,7 +82,64 @@ class OrderService
 
             $this->dashboardStats->forget($user);
 
-            return $order->fresh(['items', 'author', 'quotation']);
+            return $order->fresh(['items', 'author', 'quotation', 'consultant', 'demoConsultant']);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  list<array<string, mixed>>  $items
+     */
+    public function update(Order $order, array $data, array $items, User $user): Order
+    {
+        return DB::transaction(function () use ($order, $data, $items, $user) {
+            $order->update([
+                'user_id' => Arr::get($data, 'user_id', $order->user_id),
+                'demo_consultant_id' => Arr::get($data, 'demo_consultant_id') ?: null,
+                'notes' => Arr::get($data, 'notes', $order->notes),
+                'status' => Arr::get($data, 'status', $order->status?->value ?? $order->status),
+            ]);
+
+            $order->items()->delete();
+
+            foreach (array_values($items) as $index => $item) {
+                $quantity = max(1, (int) Arr::get($item, 'quantity', 1));
+                $unitPrice = (float) Arr::get($item, 'unit_price', 0);
+
+                OrderItem::query()->create([
+                    'order_id' => $order->id,
+                    'crm_product_id' => Arr::get($item, 'crm_product_id'),
+                    'description' => trim((string) Arr::get($item, 'description', 'Line item')),
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'line_total' => round($quantity * $unitPrice, 2),
+                    'sort_order' => $index + 1,
+                ]);
+            }
+
+            $order->load('items');
+            $subtotal = round((float) $order->items->sum('line_total'), 2);
+            $discount = (float) ($order->discount_amount ?? 0);
+            $tax = (float) ($order->tax_amount ?? 0);
+            $shipping = (float) ($order->shipping_amount ?? 0);
+
+            $order->update([
+                'subtotal' => $subtotal,
+                'total' => max(0, round($subtotal - $discount + $tax + $shipping, 2)),
+            ]);
+
+            $this->timeline->log(
+                $order->lead,
+                'order_updated',
+                'Order '.$order->order_number.' updated',
+                null,
+                ['order_id' => $order->id],
+                $user,
+            );
+
+            $this->dashboardStats->forget($user);
+
+            return $order->fresh(['items', 'consultant', 'demoConsultant']);
         });
     }
 

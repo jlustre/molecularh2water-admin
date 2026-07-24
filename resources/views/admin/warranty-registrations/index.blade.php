@@ -53,12 +53,14 @@
                         >
                             Open Public Page
                         </a>
-                        <form method="POST" action="{{ route('admin.warranty-registrations.update-seeder') }}">
-                            @csrf
-                            <button type="submit" class="inline-flex w-full shrink-0 items-center justify-center rounded-md border border-teal-200/30 bg-white/[0.08] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/[0.12]">
-                                Update Seeder
-                            </button>
-                        </form>
+                        @if (auth()->user()?->isSuperAdmin())
+                            <form method="POST" action="{{ route('admin.warranty-registrations.update-seeder') }}">
+                                @csrf
+                                <button type="submit" class="inline-flex w-full shrink-0 items-center justify-center rounded-md border border-teal-200/30 bg-white/[0.08] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/[0.12]" title="Developer tool">
+                                    Update Seeder
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 </div>
             </div>

@@ -116,8 +116,31 @@ it('seeds the default access roles', function () {
     }
 
     expect(Role::where('slug', 'super-admin')->first()->permissions)
-        ->toContain('users.delete', 'settings.manage');
+        ->toContain('users.delete', 'settings.manage', 'roles.manage', 'warranty.view', 'installation-questionnaires.view');
+
+    expect(Role::where('slug', 'admin')->first()->permissions)
+        ->toContain('roles.manage', 'warranty.manage', 'installation-questionnaires.manage')
+        ->not->toContain('users.delete', 'settings.manage');
 
     expect(Role::where('slug', 'member')->first()->permissions)
-        ->toContain('portal.dashboard.view', 'invites.manage', 'media.view', 'leads.view', 'crm.dashboard.view');
+        ->toContain('portal.dashboard.view', 'invites.manage', 'media.view', 'leads.view', 'crm.dashboard.view')
+        ->not->toContain('roles.manage', 'warranty.view');
+});
+
+it('lists every permission group on the role form', function () {
+    $admin = superAdminUser();
+
+    $this->actingAs($admin)
+        ->get(route('admin.roles.create'))
+        ->assertOk()
+        ->assertSee('Warranty Registrations')
+        ->assertSee('Installation Questionnaires')
+        ->assertSee('Email Mappings')
+        ->assertSee('Roles &amp; Permissions', false)
+        ->assertSee('Website Forms')
+        ->assertSee('warranty.view')
+        ->assertSee('roles.manage')
+        ->assertSee('website-forms.manage')
+        ->assertSee('installation-questionnaires.manage')
+        ->assertSee('email-mappings.manage');
 });

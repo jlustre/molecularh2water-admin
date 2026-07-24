@@ -6,6 +6,7 @@ use App\Models\Crm\Customer;
 use App\Models\Crm\Funnel;
 use App\Models\Crm\FunnelStage;
 use App\Models\Crm\Lead;
+use App\Models\Crm\MemberSale;
 use App\Models\Crm\Prospect;
 use App\Models\Crm\Recruit;
 use App\Models\User;
@@ -49,6 +50,7 @@ class AppServiceProvider extends ServiceProvider
             'user' => User::class,
             'funnel' => Funnel::class,
             'funnel_stage' => FunnelStage::class,
+            'member_sale' => MemberSale::class,
         ]);
 
         foreach ([Lead::class, Prospect::class, Customer::class, Recruit::class] as $model) {
@@ -61,9 +63,6 @@ class AppServiceProvider extends ServiceProvider
 
             return CrmScope::contacts($class::query())->findOrFail($value);
         });
-
-        // Attach the sidebar designs composer to the settings page
-        \View::composer('admin.placeholders.settings', \App\View\Composers\SettingsSidebarDesignsComposer::class);
     }
 
     /**

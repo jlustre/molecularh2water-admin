@@ -93,25 +93,35 @@
             </div>
 
             <div class="rounded-lg border border-teal-100 bg-white p-6 shadow-sm">
-                <h2 class="text-lg font-black text-slate-950">Sink Photo</h2>
-                @if ($questionnaire->sink_photo_path)
-                    <div class="mt-5 space-y-3">
-                        <img
-                            alt="Uploaded sink photo"
-                            class="max-h-80 w-full rounded-lg border border-teal-100 object-cover"
-                            src="{{ $questionnaire->sinkPhotoUrl() }}"
-                        >
-                        <a
-                            class="inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-4 py-2 text-sm font-bold text-teal-800 transition hover:bg-teal-50"
-                            href="{{ $questionnaire->sinkPhotoUrl() }}"
-                            rel="noreferrer"
-                            target="_blank"
-                        >
-                            Open Original
-                        </a>
+                <h2 class="text-lg font-black text-slate-950">Sink Photos</h2>
+                @php $sinkPhotos = $questionnaire->sinkPhotoItems(); @endphp
+                @if ($sinkPhotos !== [])
+                    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                        @foreach ($sinkPhotos as $index => $photo)
+                            <div class="space-y-3">
+                                <img
+                                    alt="Uploaded sink photo {{ $index + 1 }}"
+                                    class="max-h-64 w-full rounded-lg border border-teal-100 object-cover"
+                                    src="{{ $photo['url'] }}"
+                                >
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <p class="truncate text-xs font-semibold text-slate-500">
+                                        {{ $photo['original_name'] ?: 'Photo '.($index + 1) }}
+                                    </p>
+                                    <a
+                                        class="inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-3 py-1.5 text-xs font-bold text-teal-800 transition hover:bg-teal-50"
+                                        href="{{ $photo['url'] }}"
+                                        rel="noreferrer"
+                                        target="_blank"
+                                    >
+                                        Open
+                                    </a>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 @else
-                    <p class="mt-5 text-sm text-slate-500">No sink photo was uploaded.</p>
+                    <p class="mt-5 text-sm text-slate-500">No sink photos were uploaded.</p>
                 @endif
             </div>
         </section>

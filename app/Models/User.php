@@ -105,6 +105,13 @@ class User extends Authenticatable implements MustVerifyEmail
         return match ($permission) {
             'leads.view', 'leads.create', 'leads.update', 'leads.delete', 'leads.import', 'leads.export', 'leads.assign' => in_array('leads.manage', $permissions, true),
             'appointments.view' => in_array('appointments.manage', $permissions, true),
+            'roles.view' => in_array('roles.manage', $permissions, true),
+            'warranty.view' => in_array('warranty.manage', $permissions, true),
+            'installation-questionnaires.view' => in_array('installation-questionnaires.manage', $permissions, true),
+            'website-forms.view' => in_array('website-forms.manage', $permissions, true)
+                || in_array('messages.manage', $permissions, true),
+            'website-forms.manage' => in_array('messages.manage', $permissions, true),
+            'email-mappings.view' => in_array('email-mappings.manage', $permissions, true),
             default => false,
         };
     }
