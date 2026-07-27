@@ -18,6 +18,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Recurrence (schedule event modal)
+    |--------------------------------------------------------------------------
+    |
+    | Occurrences are materialized as linked calendar_events rows (same approach
+    | as portal meetings) so month/week grids need no virtual expansion.
+    |
+    */
+    'recurrence' => [
+        ['value' => 'none', 'label' => 'Does not repeat'],
+        ['value' => 'daily', 'label' => 'Daily'],
+        ['value' => 'weekly', 'label' => 'Weekly'],
+        ['value' => 'biweekly', 'label' => 'Every 2 weeks'],
+        ['value' => 'monthly', 'label' => 'Monthly'],
+    ],
+
+    'recurrence_counts' => [4, 8, 12, 26, 52],
+
+    /*
+    |--------------------------------------------------------------------------
     | Event types — direct sales (cookware, hydrogen machines, health products)
     |--------------------------------------------------------------------------
     |

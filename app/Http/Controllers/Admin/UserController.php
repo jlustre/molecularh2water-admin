@@ -41,6 +41,14 @@ class UserController extends Controller
             $query->whereNull('email_verified_at');
         }
 
+        if ($request->account_status === 'active') {
+            $query->where('is_active', true);
+        }
+
+        if ($request->account_status === 'inactive') {
+            $query->where('is_active', false);
+        }
+
         if ($request->filled('joined')) {
             match ($request->joined) {
                 '7_days' => $query->where('created_at', '>=', now()->subDays(7)),
@@ -149,6 +157,7 @@ class UserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
             'password' => ['nullable', 'confirmed', Password::defaults()],
             'email_status' => ['required', 'in:verified,unverified'],
+            'account_status' => ['required', 'in:active,inactive'],
             'sponsor_id' => [
                 Rule::requiredIf($user->requiresSponsor()),
                 'nullable',
@@ -159,6 +168,13 @@ class UserController extends Controller
             'business_lines.*' => [Rule::in(BusinessLine::values())],
             'avatar' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ]);
+
+        if ($request->user()?->is($user) && ($attributes['account_status'] ?? 'active') === 'inactive') {
+            return redirect()
+                ->route('admin.users.edit', $user)
+                ->withInput()
+                ->withErrors(['account_status' => 'You cannot inactivate your own account.']);
+        }
 
         $isSuperAdmin = $user->isSuperAdmin();
         $this->sponsors->assertValidSponsor($user, $isSuperAdmin ? null : $attributes['sponsor_id'], $isSuperAdmin);
@@ -171,6 +187,7 @@ class UserController extends Controller
                 : null,
             'sponsor_id' => $isSuperAdmin ? null : $attributes['sponsor_id'],
             'business_lines' => $this->normalizeBusinessLines($attributes['business_lines'] ?? [], $isSuperAdmin),
+            'is_active' => ($attributes['account_status'] ?? 'active') === 'active',
         ]);
 
         if (! empty($attributes['password'])) {
@@ -225,6 +242,7 @@ class UserController extends Controller
                 'email_verified_at' => $user->email_verified_at?->toDateTimeString(),
                 'sponsor_email' => $user->sponsor?->email,
                 'business_lines' => $user->business_lines,
+                'is_active' => $user->is_active,
                 'roles' => $user->roles->pluck('slug')->values()->all(),
             ])
             ->all();

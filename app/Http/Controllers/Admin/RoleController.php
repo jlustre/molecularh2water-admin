@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Role;
-use App\Support\Crm\CrmPermissions;
 use App\Models\User;
+use App\Services\Admin\RolesSeederExporter;
+use App\Support\Crm\PermissionCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -24,6 +25,8 @@ class RoleController extends Controller
         'teal' => 'Teal',
         'emerald' => 'Emerald',
         'cyan' => 'Cyan',
+        'blue' => 'Blue',
+        'indigo' => 'Indigo',
         'amber' => 'Amber',
         'rose' => 'Rose',
         'slate' => 'Slate',
@@ -31,7 +34,7 @@ class RoleController extends Controller
 
     private function permissionGroups(): array
     {
-        return CrmPermissions::groups();
+        return PermissionCatalog::groups();
     }
 
     public function index(Request $request): View
@@ -128,6 +131,20 @@ class RoleController extends Controller
         return redirect()
             ->route('admin.roles.index')
             ->with('status', 'Role deleted.');
+    }
+
+    /**
+     * Export current roles into RolesSeeder so they survive migrate:fresh --seed.
+     */
+    public function updateSeeder(RolesSeederExporter $exporter): RedirectResponse
+    {
+        abort_unless(auth()->user()?->isSuperAdmin(), 403);
+
+        $count = $exporter->export();
+
+        return redirect()
+            ->route('admin.roles.index')
+            ->with('status', 'RolesSeeder.php updated with '.$count.' role'.($count === 1 ? '' : 's').'.');
     }
 
     /**

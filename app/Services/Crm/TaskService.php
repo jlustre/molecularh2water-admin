@@ -25,9 +25,7 @@ class TaskService
      */
     public function create(array $data, User $user): Task
     {
-        $assigneeId = CrmScope::userCanViewAll($user)
-            ? (int) (Arr::get($data, 'user_id') ?: $user->id)
-            : $user->id;
+        $assigneeId = $this->resolveAssigneeId($data, $user);
         $contact = $this->resolveContact($data);
 
         $task = Task::query()->create([
@@ -64,8 +62,7 @@ class TaskService
     public function update(Task $task, array $data, User $user): Task
     {
         $contact = $this->resolveContact($data, $task);
-
-        $task->update([
+        $payload = [
             'title' => trim((string) Arr::get($data, 'title', $task->title)),
             'description' => Arr::get($data, 'description', $task->description),
             'priority' => Arr::get($data, 'priority', $task->priority?->value ?? 'normal'),
@@ -74,7 +71,13 @@ class TaskService
             'reminder_at' => Arr::get($data, 'reminder_at', $task->reminder_at),
             'contact_type' => $contact?->getMorphClass(),
             'contact_id' => $contact?->id,
-        ]);
+        ];
+
+        if ($this->canAssignTasks($user) && array_key_exists('user_id', $data)) {
+            $payload['user_id'] = $this->resolveAssigneeId($data, $user, $task);
+        }
+
+        $task->update($payload);
 
         if ($contact) {
             $this->syncContactFollowUp($contact, $task->due_at);
@@ -150,5 +153,31 @@ class TaskService
         if ($dueAt) {
             $contact->update(['next_follow_up_at' => $dueAt]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveAssigneeId(array $data, User $actor, ?Task $existing = null): int
+    {
+        if (! $this->canAssignTasks($actor)) {
+            return (int) ($existing?->user_id ?: $actor->id);
+        }
+
+        $assigneeId = (int) (Arr::get($data, 'user_id') ?: ($existing?->user_id ?: $actor->id));
+
+        abort_unless(
+            User::query()->whereKey($assigneeId)->where('is_active', true)->exists(),
+            422,
+            'The selected assignee is not an active portal member.',
+        );
+
+        return $assigneeId;
+    }
+
+    private function canAssignTasks(User $user): bool
+    {
+        return $user->hasPermission('tasks.assign')
+            || CrmScope::userCanViewAll($user);
     }
 }

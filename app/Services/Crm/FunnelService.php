@@ -167,6 +167,35 @@ class FunnelService
         return $funnel->fresh('stages');
     }
 
+    public function deleteFunnel(Funnel $funnel): void
+    {
+        if ($funnel->is_default) {
+            throw ValidationException::withMessages([
+                'funnel' => 'Cannot delete the default pipeline. Set another pipeline as default first.',
+            ]);
+        }
+
+        $remaining = Funnel::query()
+            ->where('is_active', true)
+            ->whereKeyNot($funnel->id)
+            ->count();
+
+        if ($remaining < 1) {
+            throw ValidationException::withMessages([
+                'funnel' => 'Cannot delete the last active pipeline.',
+            ]);
+        }
+
+        if (PipelineContacts::countForFunnel($funnel->id) > 0) {
+            throw ValidationException::withMessages([
+                'funnel' => 'Cannot delete a pipeline that still has records. Move those contacts first.',
+            ]);
+        }
+
+        $funnel->stages()->delete();
+        $funnel->delete();
+    }
+
     public function seedStages(Funnel $funnel, array $stages): void
     {
         foreach ($stages as $stage) {

@@ -5,6 +5,10 @@
         'verified' => 'bg-emerald-50 text-emerald-700',
         'unverified' => 'bg-amber-50 text-amber-700',
     ];
+    $activeClasses = [
+        'active' => 'bg-emerald-50 text-emerald-700',
+        'inactive' => 'bg-rose-50 text-rose-700',
+    ];
 @endphp
 
 @section('content')
@@ -77,9 +81,14 @@
                 <form method="GET" action="{{ route('admin.users.index') }}" class="grid gap-2 md:grid-cols-2 xl:flex xl:flex-wrap">
                     <input name="search" type="search" value="{{ request('search') }}" class="rounded-full border border-teal-100 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-teal-400 focus:ring-teal-400 xl:w-56" placeholder="Search name or email...">
                     <select name="status" class="rounded-full border border-teal-100 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-teal-400 focus:ring-teal-400">
-                        <option value="">All statuses</option>
+                        <option value="">All email statuses</option>
                         <option value="verified" @selected(request('status') === 'verified')>Verified</option>
                         <option value="unverified" @selected(request('status') === 'unverified')>Unverified</option>
+                    </select>
+                    <select name="account_status" class="rounded-full border border-teal-100 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-teal-400 focus:ring-teal-400">
+                        <option value="">All active statuses</option>
+                        <option value="active" @selected(request('account_status') === 'active')>Active</option>
+                        <option value="inactive" @selected(request('account_status') === 'inactive')>Inactive</option>
                     </select>
                     <select name="role" class="rounded-full border border-teal-100 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-teal-400 focus:ring-teal-400">
                         <option value="">All roles</option>
@@ -114,7 +123,8 @@
                         <tr>
                             <th class="px-4 py-3">User</th>
                             <th class="px-4 py-3">Sponsor</th>
-                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Email</th>
+                            <th class="px-4 py-3">Active</th>
                             <th class="px-4 py-3">Joined</th>
                             <th class="px-4 py-3">Updated</th>
                             <th class="px-4 py-3 text-right">Actions</th>
@@ -129,6 +139,7 @@
                                     ->map(fn ($part) => mb_substr($part, 0, 1))
                                     ->join('');
                                 $status = $user->email_verified_at ? 'verified' : 'unverified';
+                                $activeStatus = $user->isActive() ? 'active' : 'inactive';
                             @endphp
                             <tr class="transition hover:bg-teal-50/50">
                                 <td class="px-4 py-4">
@@ -153,6 +164,11 @@
                                 <td class="px-4 py-4">
                                     <span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $statusClasses[$status] }}">
                                         {{ ucfirst($status) }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $activeClasses[$activeStatus] }}">
+                                        {{ ucfirst($activeStatus) }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-4 text-slate-500">{{ $user->created_at?->format('M j, Y') }}</td>
@@ -183,7 +199,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-4 py-12 text-center">
+                                <td colspan="7" class="px-4 py-12 text-center">
                                     <p class="text-base font-bold text-slate-900">No users found</p>
                                     <p class="mt-1 text-sm text-slate-500">Try a different search or create a new account.</p>
                                     <a href="{{ route('admin.users.create') }}" class="mt-4 inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-2.5 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">

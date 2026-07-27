@@ -11,6 +11,8 @@
         'teal' => 'bg-teal-50 text-teal-700',
         'emerald' => 'bg-emerald-50 text-emerald-700',
         'cyan' => 'bg-cyan-50 text-cyan-700',
+        'blue' => 'bg-blue-50 text-blue-700',
+        'indigo' => 'bg-indigo-50 text-indigo-700',
         'amber' => 'bg-amber-50 text-amber-700',
         'rose' => 'bg-rose-50 text-rose-700',
         'slate' => 'bg-slate-100 text-slate-700',
@@ -32,19 +34,34 @@
                     <div class="max-w-3xl">
                         <p class="inline-flex items-center gap-2 rounded-full border border-teal-300/25 bg-white/[0.07] px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-teal-100">
                             <span class="size-2 rounded-full bg-teal-300 shadow-[0_0_14px_rgba(45,212,191,0.9)]"></span>
-                            Roles & Permissions
+                            Roles
                         </p>
-                        <h1 class="mt-5 text-3xl font-black tracking-normal sm:text-4xl">Design access profiles for every admin workflow.</h1>
+                        <h1 class="mt-5 text-3xl font-black tracking-normal sm:text-4xl">Create and manage access roles for every workflow.</h1>
                         <p class="mt-3 max-w-2xl text-sm leading-7 text-teal-50/[0.72]">
-                            Create roles, group permissions by feature area, assign users, and keep inactive access policies archived.
+                            Add roles, assign users, set permissions, and keep inactive access profiles archived.
                         </p>
                     </div>
 
-                    @if (auth()->user()?->hasPermission('roles.manage'))
-                        <a href="{{ route('admin.roles.create') }}" class="inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-3 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">
-                            Add Role
-                        </a>
-                    @endif
+                    <div class="flex flex-col gap-3 sm:flex-row">
+                        @if (auth()->user()?->hasPermission('permissions.view'))
+                            <a href="{{ route('admin.permissions.index') }}" class="inline-flex items-center justify-center rounded-md border border-teal-200/30 bg-white/[0.08] px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.12]">
+                                Permissions
+                            </a>
+                        @endif
+                        @if (auth()->user()?->isSuperAdmin() && auth()->user()?->hasPermission('roles.export'))
+                            <form method="POST" action="{{ route('admin.roles.update-seeder') }}">
+                                @csrf
+                                <button type="submit" class="inline-flex w-full items-center justify-center rounded-md border border-teal-200/30 bg-white/[0.08] px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.12]" title="Developer tool: write current roles into RolesSeeder.php">
+                                    Update Seeder
+                                </button>
+                            </form>
+                        @endif
+                        @if (auth()->user()?->hasPermission('roles.manage'))
+                            <a href="{{ route('admin.roles.create') }}" class="inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-3 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">
+                                Add Role
+                            </a>
+                        @endif
+                    </div>
                 </div>
             </div>
         </section>

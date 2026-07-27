@@ -10,6 +10,8 @@ class RolesSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(PermissionCatalogSeeder::class);
+
         $defaults = CrmPermissions::defaultsByRole();
 
         $roles = [

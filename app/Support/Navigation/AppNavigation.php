@@ -24,16 +24,14 @@ class AppNavigation
     {
         return [
             'overview' => 'Overview',
-            'workspace' => 'Workspace',
+            'workspace' => 'My Workspace',
             'content' => 'Content',
             'crm_people' => 'CRM · People',
             'crm_pipeline' => 'CRM · Pipeline',
-            'crm_schedule' => 'CRM · Schedule',
             'crm_insights' => 'CRM · Insights',
             'crm_setup' => 'CRM · Setup',
             'engagement' => 'Website Inboxes',
             'system' => 'System',
-            'account' => 'Account',
         ];
     }
 
@@ -85,7 +83,7 @@ class AppNavigation
             ],
             [
                 'key' => 'portal-dashboard',
-                'label' => 'Dashboard',
+                'label' => 'My Dashboard',
                 'route' => 'dashboard',
                 'permission' => 'portal.dashboard.view',
                 'section' => 'workspace',
@@ -98,15 +96,45 @@ class AppNavigation
                 'section' => 'workspace',
             ],
             [
+                'key' => 'crm-my-calendar',
+                'label' => 'My Calendar',
+                'route' => $crmPrefix.'my-calendar.index',
+                'route_pattern' => $crmPrefix.'my-calendar.*',
+                'permission' => 'calendar.view',
+                'section' => 'workspace',
+            ],
+            [
+                'key' => 'crm-appointments',
+                'label' => 'My Appointments',
+                'route' => $crmPrefix.'appointments.index',
+                'permission' => 'appointments.view',
+                'section' => 'workspace',
+            ],
+            [
+                'key' => 'crm-tasks',
+                'label' => 'My Tasks',
+                'route' => $crmPrefix.'tasks.index',
+                'permission' => 'tasks.view',
+                'section' => 'workspace',
+            ],
+            [
+                'key' => 'crm-my-sales',
+                'label' => 'My Sales',
+                'route' => $crmPrefix.'my-sales.index',
+                'route_pattern' => $crmPrefix.'my-sales.*',
+                'permission' => 'portal.dashboard.view',
+                'section' => 'workspace',
+            ],
+            [
                 'key' => 'resources',
-                'label' => 'Resources',
+                'label' => 'My Resources',
                 'route' => 'resources',
                 'permission' => 'portal.dashboard.view',
                 'section' => 'workspace',
             ],
             [
                 'key' => 'faqs',
-                'label' => 'FAQs',
+                'label' => 'FAQs Management',
                 'route' => 'admin.faqs.index',
                 'route_pattern' => 'admin.faqs.*',
                 'permission' => 'faqs.manage',
@@ -116,7 +144,7 @@ class AppNavigation
             ],
             [
                 'key' => 'blog',
-                'label' => 'Blog / Education',
+                'label' => 'Blog Management',
                 'route' => 'admin.blog.index',
                 'route_pattern' => 'admin.blog.*',
                 'permission' => 'blog.manage',
@@ -126,7 +154,7 @@ class AppNavigation
             ],
             [
                 'key' => 'media',
-                'label' => 'Media Library',
+                'label' => 'Media Management',
                 'route' => 'admin.media.index',
                 'route_pattern' => 'admin.media.*',
                 'permission' => 'media.view',
@@ -192,50 +220,6 @@ class AppNavigation
                 'permission' => 'activities.view',
                 'section' => 'crm_pipeline',
             ],
-            [
-                'key' => 'crm-sales',
-                'label' => 'Consultant Sales',
-                'route' => $crmPrefix.'sales.index',
-                'permission' => 'sales.view',
-                'section' => 'crm_pipeline',
-            ],
-            [
-                'key' => 'crm-products',
-                'label' => 'Products & Gifts',
-                'route' => $crmPrefix.'products.index',
-                'permission' => 'products.view',
-                'section' => 'crm_pipeline',
-            ],
-            [
-                'key' => 'crm-inventory',
-                'label' => 'Inventory',
-                'route' => $crmPrefix.'inventory.index',
-                'permission' => 'products.view',
-                'section' => 'crm_pipeline',
-            ],
-
-            // CRM · Schedule
-            [
-                'key' => 'crm-calendar',
-                'label' => 'Team Calendar',
-                'route' => $crmPrefix.'calendar.index',
-                'permission' => 'calendar.view',
-                'section' => 'crm_schedule',
-            ],
-            [
-                'key' => 'crm-appointments',
-                'label' => 'Booked Appointments',
-                'route' => $crmPrefix.'appointments.index',
-                'permission' => 'appointments.view',
-                'section' => 'crm_schedule',
-            ],
-            [
-                'key' => 'crm-tasks',
-                'label' => 'Tasks',
-                'route' => $crmPrefix.'tasks.index',
-                'permission' => 'tasks.view',
-                'section' => 'crm_schedule',
-            ],
 
             // CRM · Insights
             [
@@ -243,6 +227,7 @@ class AppNavigation
                 'label' => 'Executive Dashboard',
                 'route' => $crmPrefix.'dashboard.index',
                 'permission' => 'crm.dashboard.view',
+                'requires_admin' => true,
                 'section' => 'crm_insights',
             ],
             [
@@ -250,6 +235,7 @@ class AppNavigation
                 'label' => 'Reports',
                 'route' => $crmPrefix.'reports.index',
                 'permission' => 'reports.view',
+                'requires_admin' => true,
                 'section' => 'crm_insights',
             ],
 
@@ -340,8 +326,62 @@ class AppNavigation
                 'requires_admin' => true,
                 'section' => 'engagement',
             ],
+            [
+                'key' => 'installers',
+                'label' => 'Installer Management',
+                'route' => 'admin.installers.index',
+                'route_pattern' => 'admin.installers.*',
+                'permission' => 'installers.view',
+                'requires_admin' => true,
+                'section' => 'engagement',
+            ],
 
             // System
+            [
+                'key' => 'crm-task-management',
+                'label' => 'Tasks Management',
+                'route' => 'admin.crm.task-management.index',
+                'route_pattern' => '*.crm.task-management.*',
+                'permission' => 'tasks.assign',
+                'requires_admin' => true,
+                'section' => 'system',
+            ],
+            [
+                'key' => 'crm-sales',
+                'label' => 'Consultant Sales',
+                'route' => 'admin.crm.sales.index',
+                'route_pattern' => 'admin.crm.sales.*',
+                'permission' => 'sales.view',
+                'requires_admin' => true,
+                'section' => 'system',
+            ],
+            [
+                'key' => 'crm-products',
+                'label' => 'Products & Gifts',
+                'route' => 'admin.crm.products.index',
+                'route_pattern' => 'admin.crm.products.*',
+                'permission' => 'products.view',
+                'requires_admin' => true,
+                'section' => 'system',
+            ],
+            [
+                'key' => 'crm-inventory',
+                'label' => 'Inventory',
+                'route' => 'admin.crm.inventory.index',
+                'route_pattern' => 'admin.crm.inventory.*',
+                'permission' => 'products.view',
+                'requires_admin' => true,
+                'section' => 'system',
+            ],
+            [
+                'key' => 'customers',
+                'label' => 'Customers Management',
+                'route' => 'admin.customers.index',
+                'route_pattern' => 'admin.customers.*',
+                'permission' => 'customer-directory.view',
+                'requires_admin' => true,
+                'section' => 'system',
+            ],
             [
                 'key' => 'users',
                 'label' => 'Users',
@@ -353,10 +393,19 @@ class AppNavigation
             ],
             [
                 'key' => 'roles',
-                'label' => 'Roles & Permissions',
+                'label' => 'Roles',
                 'route' => 'admin.roles.index',
                 'route_pattern' => 'admin.roles.*',
                 'permission' => 'roles.view',
+                'requires_admin' => true,
+                'section' => 'system',
+            ],
+            [
+                'key' => 'permissions',
+                'label' => 'Permissions',
+                'route' => 'admin.permissions.index',
+                'route_pattern' => 'admin.permissions.*',
+                'permission' => 'permissions.view',
                 'requires_admin' => true,
                 'section' => 'system',
             ],
@@ -388,21 +437,6 @@ class AppNavigation
                 'section' => 'system',
             ],
 
-            // Account
-            [
-                'key' => 'invites',
-                'label' => 'Member Invites',
-                'route' => 'portal.invites',
-                'permission' => 'invites.manage',
-                'section' => 'account',
-            ],
-            [
-                'key' => 'team',
-                'label' => 'My Team',
-                'route' => 'portal.team',
-                'permission' => 'sponsors.view-tree',
-                'section' => 'account',
-            ],
         ];
 
         return collect($definitions)

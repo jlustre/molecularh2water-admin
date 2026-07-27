@@ -87,7 +87,7 @@
         <input id="password_confirmation" name="password_confirmation" type="password" @required(! $user->exists) class="mt-1 block w-full rounded-md border-teal-100 text-slate-900 shadow-sm focus:border-teal-500 focus:ring-teal-500" autocomplete="new-password">
     </div>
 
-    <div class="lg:col-span-2">
+    <div>
         <label for="email_status" class="block text-sm font-semibold text-slate-700">Email Status</label>
         <select id="email_status" name="email_status" required class="mt-1 block w-full rounded-md border-teal-100 text-slate-900 shadow-sm focus:border-teal-500 focus:ring-teal-500">
             <option value="verified" @selected(old('email_status', $user->email_verified_at ? 'verified' : 'unverified') === 'verified')>Verified</option>
@@ -97,6 +97,31 @@
             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
         @enderror
     </div>
+
+    @if ($user->exists)
+        <div>
+            <label for="account_status" class="block text-sm font-semibold text-slate-700">Account Status</label>
+            <select
+                id="account_status"
+                name="account_status"
+                required
+                @disabled(auth()->id() === $user->id)
+                class="mt-1 block w-full rounded-md border-teal-100 text-slate-900 shadow-sm focus:border-teal-500 focus:ring-teal-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+            >
+                <option value="active" @selected(old('account_status', $user->is_active ? 'active' : 'inactive') === 'active')>Active</option>
+                <option value="inactive" @selected(old('account_status', $user->is_active ? 'active' : 'inactive') === 'inactive')>Inactive</option>
+            </select>
+            @if (auth()->id() === $user->id)
+                <input type="hidden" name="account_status" value="active">
+                <p class="mt-2 text-xs text-slate-500">You cannot inactivate your own account.</p>
+            @else
+                <p class="mt-2 text-xs text-slate-500">Inactive users cannot sign in to the portal or admin area.</p>
+            @endif
+            @error('account_status')
+                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+    @endif
 
     @if (! $user->exists)
         <div class="lg:col-span-2">

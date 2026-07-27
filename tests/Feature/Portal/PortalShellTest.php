@@ -67,8 +67,9 @@ it('renders collapsible nav groups in the portal sidebar', function () {
         ->assertOk()
         ->assertSee('sidebarNavGroups')
         ->assertSee("toggle('workspace')", false)
-        ->assertSee("toggle('crm')", false)
-        ->assertSee("toggle('account')", false);
+        ->assertSee("toggle('crm_people')", false)
+        ->assertDontSee("toggle('crm_schedule')", false)
+        ->assertDontSee("toggle('account')", false);
 });
 
 it('hides admin portal link from users without admin access', function () {

@@ -233,10 +233,10 @@ it('renders the activities tasks and appointments modules', function () {
     $this->actingAs($admin)
         ->get(route('admin.crm.tasks.index'))
         ->assertOk()
-        ->assertSee('Follow-Ups');
+        ->assertSee('My Tasks');
 
     $this->actingAs($admin)
         ->get(route('admin.crm.appointments.index'))
         ->assertOk()
-        ->assertSee('Appointments');
+        ->assertSee('My Appointments');
 });

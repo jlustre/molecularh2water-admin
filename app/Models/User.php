@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'avatar_path', 'sponsor_id', 'business_lines'])]
+#[Fillable(['name', 'email', 'password', 'avatar_path', 'sponsor_id', 'business_lines', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -30,7 +30,13 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'business_lines' => 'array',
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function isActive(): bool
+    {
+        return $this->is_active !== false;
     }
 
     public function roles(): BelongsToMany
@@ -77,7 +83,7 @@ class User extends Authenticatable implements MustVerifyEmail
     public function permissions(): array
     {
         if ($this->hasRole('super-admin')) {
-            return \App\Support\Crm\CrmPermissions::all();
+            return \App\Support\Crm\PermissionCatalog::all();
         }
 
         return $this->roles()
@@ -106,8 +112,14 @@ class User extends Authenticatable implements MustVerifyEmail
             'leads.view', 'leads.create', 'leads.update', 'leads.delete', 'leads.import', 'leads.export', 'leads.assign' => in_array('leads.manage', $permissions, true),
             'appointments.view' => in_array('appointments.manage', $permissions, true),
             'roles.view' => in_array('roles.manage', $permissions, true),
+            'permissions.view' => in_array('permissions.manage', $permissions, true)
+                || in_array('roles.manage', $permissions, true)
+                || in_array('roles.view', $permissions, true),
+            'permissions.manage' => in_array('roles.manage', $permissions, true),
             'warranty.view' => in_array('warranty.manage', $permissions, true),
             'installation-questionnaires.view' => in_array('installation-questionnaires.manage', $permissions, true),
+            'installers.view' => in_array('installers.manage', $permissions, true),
+            'customer-directory.view' => in_array('customer-directory.manage', $permissions, true),
             'website-forms.view' => in_array('website-forms.manage', $permissions, true)
                 || in_array('messages.manage', $permissions, true),
             'website-forms.manage' => in_array('messages.manage', $permissions, true),

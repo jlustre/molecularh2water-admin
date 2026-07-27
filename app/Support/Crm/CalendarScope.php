@@ -4,7 +4,9 @@ namespace App\Support\Crm;
 
 use App\Models\Crm\CalendarEvent;
 use App\Models\User;
+use App\Services\Crm\UserCalendarService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema;
 
 class CalendarScope
 {
@@ -47,15 +49,29 @@ class CalendarScope
             return BusinessLineScope::apply($query, $user);
         }
 
+        $accessibleCalendarIds = self::accessibleCalendarIds($user);
+
         if (self::userCanViewTeam($user)) {
             return BusinessLineScope::apply(
-                $query->whereIn('user_id', TeamScope::visibleUserIds($user)),
+                $query->where(function (Builder $inner) use ($user, $accessibleCalendarIds) {
+                    $inner->whereIn('user_id', TeamScope::visibleUserIds($user));
+
+                    if ($accessibleCalendarIds !== []) {
+                        $inner->orWhereIn('user_calendar_id', $accessibleCalendarIds);
+                    }
+                }),
                 $user,
             );
         }
 
         return BusinessLineScope::apply(
-            $query->where('user_id', $user->id),
+            $query->where(function (Builder $inner) use ($user, $accessibleCalendarIds) {
+                $inner->where('user_id', $user->id);
+
+                if ($accessibleCalendarIds !== []) {
+                    $inner->orWhereIn('user_calendar_id', $accessibleCalendarIds);
+                }
+            }),
             $user,
         );
     }
@@ -76,6 +92,10 @@ class CalendarScope
             return true;
         }
 
+        if ($event->user_calendar_id && in_array((int) $event->user_calendar_id, self::accessibleCalendarIds($user), true)) {
+            return true;
+        }
+
         if (! $event->user_id) {
             return false;
         }
@@ -85,5 +105,19 @@ class CalendarScope
         }
 
         return (int) $event->user_id === (int) $user->id;
+    }
+
+    /**
+     * @return list<int>
+     */
+    public static function accessibleCalendarIds(?User $user = null): array
+    {
+        $user ??= auth()->user();
+
+        if (! $user || ! Schema::hasTable('user_calendars')) {
+            return [];
+        }
+
+        return app(UserCalendarService::class)->accessibleCalendarIds($user);
     }
 }

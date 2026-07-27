@@ -3,6 +3,7 @@
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\RolesSeeder;
+use Illuminate\Support\Facades\File;
 
 it('allows an admin to manage roles and assigned users', function () {
     $admin = superAdminUser();
@@ -14,7 +15,7 @@ it('allows an admin to manage roles and assigned users', function () {
     $this->actingAs($admin)
         ->get(route('admin.roles.index'))
         ->assertOk()
-        ->assertSee('Roles &amp; Permissions', false)
+        ->assertSee('Create and manage access roles')
         ->assertSee('Add Role');
 
     $this->actingAs($admin)
@@ -116,15 +117,24 @@ it('seeds the default access roles', function () {
     }
 
     expect(Role::where('slug', 'super-admin')->first()->permissions)
-        ->toContain('users.delete', 'settings.manage', 'roles.manage', 'warranty.view', 'installation-questionnaires.view');
+        ->toContain(
+            'users.delete',
+            'settings.manage',
+            'roles.manage',
+            'roles.export',
+            'permissions.view',
+            'permissions.manage',
+            'warranty.view',
+            'installation-questionnaires.view',
+        );
 
     expect(Role::where('slug', 'admin')->first()->permissions)
-        ->toContain('roles.manage', 'warranty.manage', 'installation-questionnaires.manage')
+        ->toContain('roles.manage', 'permissions.manage', 'warranty.manage', 'installation-questionnaires.manage')
         ->not->toContain('users.delete', 'settings.manage');
 
     expect(Role::where('slug', 'member')->first()->permissions)
-        ->toContain('portal.dashboard.view', 'invites.manage', 'media.view', 'leads.view', 'crm.dashboard.view')
-        ->not->toContain('roles.manage', 'warranty.view');
+        ->toContain('portal.dashboard.view', 'media.view', 'leads.view')
+        ->not->toContain('roles.manage', 'warranty.view', 'invites.manage', 'crm.dashboard.view', 'reports.view');
 });
 
 it('lists every permission group on the role form', function () {
@@ -135,12 +145,75 @@ it('lists every permission group on the role form', function () {
         ->assertOk()
         ->assertSee('Warranty Registrations')
         ->assertSee('Installation Questionnaires')
+        ->assertSee('Installer Management')
+        ->assertSee('Customers Management')
         ->assertSee('Email Mappings')
-        ->assertSee('Roles &amp; Permissions', false)
+        ->assertSee('Sales & Catalog (System)')
+        ->assertSee('Orders & Fulfillment')
+        ->assertSee('CRM Insights')
+        ->assertSee('>Roles</p>', false)
+        ->assertSee('>Permissions</p>', false)
         ->assertSee('Website Forms')
         ->assertSee('warranty.view')
         ->assertSee('roles.manage')
+        ->assertSee('roles.export')
+        ->assertSee('permissions.view')
+        ->assertSee('permissions.manage')
         ->assertSee('website-forms.manage')
         ->assertSee('installation-questionnaires.manage')
-        ->assertSee('email-mappings.manage');
+        ->assertSee('installers.view')
+        ->assertSee('installers.manage')
+        ->assertSee('customer-directory.view')
+        ->assertSee('customer-directory.manage')
+        ->assertSee('email-mappings.manage')
+        ->assertSee('tasks.assign')
+        ->assertSee('fulfillment.view')
+        ->assertSee('fulfillment.manage')
+        ->assertSee('sales.view')
+        ->assertSee('products.manage')
+        ->assertSee('crm.dashboard.view')
+        ->assertSee('invites.manage');
+});
+
+it('shows the update seeder action for super admins', function () {
+    $admin = superAdminUser();
+
+    $this->actingAs($admin)
+        ->get(route('admin.roles.index'))
+        ->assertOk()
+        ->assertSee('Update Seeder');
+});
+
+it('updates the roles seeder from current records', function () {
+    $admin = superAdminUser(['name' => 'Admin User']);
+
+    $role = Role::create([
+        'name' => 'Content Lead',
+        'slug' => 'content-lead',
+        'description' => 'Owns media and FAQs.',
+        'status' => 'active',
+        'color' => 'amber',
+        'permissions' => ['media.view', 'faqs.manage'],
+        'is_system' => false,
+    ]);
+
+    File::shouldReceive('put')
+        ->once()
+        ->withArgs(function (string $path, string $contents) use ($role) {
+            expect($path)->toBe(database_path('seeders/RolesSeeder.php'));
+
+            return str_contains($contents, 'class RolesSeeder')
+                && str_contains($contents, "Role::query()->updateOrCreate")
+                && str_contains($contents, "'slug' => 'content-lead'")
+                && str_contains($contents, "'name' => 'Content Lead'")
+                && str_contains($contents, "'media.view'")
+                && str_contains($contents, "'faqs.manage'")
+                && str_contains($contents, (string) $role->slug);
+        })
+        ->andReturn(1);
+
+    $this->actingAs($admin)
+        ->post(route('admin.roles.update-seeder'))
+        ->assertRedirect(route('admin.roles.index'))
+        ->assertSessionHas('status', fn (string $status) => str_contains($status, 'RolesSeeder.php updated'));
 });

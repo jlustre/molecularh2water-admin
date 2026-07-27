@@ -3,6 +3,7 @@
 namespace App\Models\Crm;
 
 use App\Contracts\Crm\CrmContact;
+use App\Enums\Crm\EngagementType;
 use App\Enums\Crm\LeadTemperature;
 use App\Models\Crm\Concerns\IsCrmContact;
 use Database\Factories\RecruitFactory;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'lifecycle_id',
     'business_line',
     'status',
+    'engagement_type',
     'temperature',
     'score',
     'first_name',
@@ -56,7 +58,9 @@ class Recruit extends Model implements CrmContact
 
     protected function casts(): array
     {
-        return $this->crmContactCasts();
+        return array_merge($this->crmContactCasts(), [
+            'engagement_type' => EngagementType::class,
+        ]);
     }
 
     protected static function newFactory(): RecruitFactory

@@ -14,7 +14,14 @@ beforeEach(function () {
 function inviteModalSponsor(): User
 {
     $user = User::factory()->create();
-    $user->roles()->attach(Role::query()->where('slug', 'consultant')->first());
+    $consultant = Role::query()->where('slug', 'consultant')->firstOrFail();
+    $consultant->update([
+        'permissions' => array_values(array_unique(array_merge(
+            $consultant->permissions ?? [],
+            ['invites.manage'],
+        ))),
+    ]);
+    $user->roles()->attach($consultant);
 
     return $user;
 }

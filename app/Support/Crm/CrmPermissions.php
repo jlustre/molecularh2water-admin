@@ -44,14 +44,12 @@ class CrmPermissions
                 'label' => 'Dashboard',
                 'items' => [
                     'admin.dashboard.view' => 'View admin dashboard',
-                    'crm.dashboard.view' => 'View CRM dashboard metrics',
-                    'portal.dashboard.view' => 'View associate portal dashboard',
                 ],
             ],
             'media' => [
-                'label' => 'Media Library',
+                'label' => 'Media Library (Content)',
                 'items' => [
-                    'media.view' => 'View media',
+                    'media.view' => 'View media library',
                     'media.create' => 'Create media',
                     'media.update' => 'Update media',
                     'media.delete' => 'Delete media',
@@ -59,7 +57,7 @@ class CrmPermissions
                 ],
             ],
             'users' => [
-                'label' => 'Users',
+                'label' => 'Users (System)',
                 'items' => [
                     'users.view' => 'View users',
                     'users.create' => 'Create users',
@@ -71,7 +69,7 @@ class CrmPermissions
             'content' => [
                 'label' => 'Content',
                 'items' => [
-                    'blog.manage' => 'Manage blog',
+                    'blog.manage' => 'Manage Blog / Education',
                     'faqs.manage' => 'Manage FAQs',
                 ],
             ],
@@ -88,6 +86,20 @@ class CrmPermissions
                 'items' => [
                     'installation-questionnaires.view' => 'View installation questionnaires',
                     'installation-questionnaires.manage' => 'Manage installation questionnaires',
+                ],
+            ],
+            'installers' => [
+                'label' => 'Installer Management',
+                'items' => [
+                    'installers.view' => 'View installers and installation history',
+                    'installers.manage' => 'Create, update, archive, and delete installers',
+                ],
+            ],
+            'customer_directory' => [
+                'label' => 'Customers Management',
+                'items' => [
+                    'customer-directory.view' => 'View customer directory',
+                    'customer-directory.manage' => 'Create, update, and delete directory customers',
                 ],
             ],
             'leads' => [
@@ -141,26 +153,34 @@ class CrmPermissions
                 ],
             ],
             'sales' => [
-                'label' => 'Sales',
+                'label' => 'Sales & Catalog (System)',
                 'items' => [
-                    'sales.view' => 'View member sales (scoped)',
-                    'sales.manage' => 'Manage member sales and inventory',
-                    'products.view' => 'View product and gift catalog',
-                    'products.manage' => 'Manage products, gifts, categories, and inventory',
+                    'sales.view' => 'View Consultant Sales (System)',
+                    'sales.manage' => 'Manage Consultant Sales (System)',
+                    'products.view' => 'View Products, Gifts & Inventory (System)',
+                    'products.manage' => 'Manage Products, Gifts & Inventory (System)',
+                ],
+            ],
+            'fulfillment' => [
+                'label' => 'Orders & Fulfillment',
+                'items' => [
+                    'fulfillment.view' => 'View deliveries, installations, and ready-to-ship queues',
+                    'fulfillment.manage' => 'Update fulfillment status, photos, and installation records',
                 ],
             ],
             'tasks' => [
                 'label' => 'Tasks',
                 'items' => [
-                    'tasks.view' => 'View tasks',
-                    'tasks.manage' => 'Manage tasks and follow-ups',
+                    'tasks.view' => 'View My Tasks (Workspace)',
+                    'tasks.manage' => 'Manage My Tasks and follow-ups (Workspace)',
+                    'tasks.assign' => 'Tasks Management: assign to any portal member (System)',
                 ],
             ],
             'appointments' => [
                 'label' => 'Appointments',
                 'items' => [
-                    'appointments.view' => 'View appointments',
-                    'appointments.manage' => 'Manage appointments',
+                    'appointments.view' => 'View appointments (Workspace)',
+                    'appointments.manage' => 'Manage appointments (Workspace)',
                 ],
             ],
             'website_forms' => [
@@ -181,8 +201,8 @@ class CrmPermissions
             'calendar' => [
                 'label' => 'Calendar',
                 'items' => [
-                    'calendar.view' => 'View CRM calendar',
-                    'calendar.manage' => 'Manage calendar events',
+                    'calendar.view' => 'View My Calendar (Workspace)',
+                    'calendar.manage' => 'Manage My Calendar events (Workspace)',
                     'calendar.view-team' => 'View team calendar events',
                     'calendar.view-all' => 'View all calendar events',
                 ],
@@ -195,9 +215,10 @@ class CrmPermissions
                 ],
             ],
             'reports' => [
-                'label' => 'Reports',
+                'label' => 'CRM Insights',
                 'items' => [
-                    'reports.view' => 'View CRM reports and analytics',
+                    'reports.view' => 'View CRM reports and analytics (Insights)',
+                    'crm.dashboard.view' => 'View Executive Dashboard (Insights)',
                 ],
             ],
             'crm_admin' => [
@@ -208,21 +229,31 @@ class CrmPermissions
                     'crm.teams.manage' => 'Manage teams',
                     'crm.settings.manage' => 'Manage CRM settings',
                     'notifications.view' => 'View notifications',
-                    'settings.manage' => 'Manage system settings',
+                    'settings.manage' => 'Manage system settings and website content',
                 ],
             ],
             'roles' => [
-                'label' => 'Roles & Permissions',
+                'label' => 'Roles',
                 'items' => [
-                    'roles.view' => 'View roles & permissions',
+                    'roles.view' => 'View roles',
                     'roles.manage' => 'Create and update roles',
+                    'roles.export' => 'Update roles seeder',
+                ],
+            ],
+            'permissions' => [
+                'label' => 'Permissions',
+                'items' => [
+                    'permissions.view' => 'View permissions catalog',
+                    'permissions.manage' => 'Assign permissions to roles',
+                    'permissions.export' => 'Update roles seeder from permission assignments',
                 ],
             ],
             'portal' => [
                 'label' => 'Member Portal',
                 'items' => [
-                    'invites.manage' => 'Generate sponsor registration invites',
-                    'sponsors.view-tree' => 'View member sponsor hierarchy',
+                    'portal.dashboard.view' => 'View My Dashboard, My Sales, and portal workspace',
+                    'invites.manage' => 'Manage Member Invites (sponsor registration links)',
+                    'sponsors.view-tree' => 'View member sponsor hierarchy / My Team',
                 ],
             ],
         ];
@@ -239,9 +270,7 @@ class CrmPermissions
 
         $consultant = [
             'portal.dashboard.view',
-            'invites.manage',
             'sponsors.view-tree',
-            'crm.dashboard.view',
             'leads.view',
             'leads.create',
             'leads.update',
@@ -252,8 +281,6 @@ class CrmPermissions
             'pipeline.manage',
             'activities.view',
             'activities.manage',
-            'sales.view',
-            'products.view',
             'tasks.view',
             'tasks.manage',
             'appointments.view',
@@ -273,9 +300,7 @@ class CrmPermissions
             ])),
             'manager' => [
                 'portal.dashboard.view',
-                'invites.manage',
                 'sponsors.view-tree',
-                'crm.dashboard.view',
                 'media.view',
                 'media.create',
                 'media.update',
@@ -296,8 +321,6 @@ class CrmPermissions
                 'pipeline.manage',
                 'activities.view',
                 'activities.manage',
-                'sales.view',
-                'products.view',
                 'tasks.view',
                 'tasks.manage',
                 'appointments.view',
@@ -307,7 +330,6 @@ class CrmPermissions
                 'calendar.view-team',
                 'crm.records.view-team',
                 'landing-pages.view',
-                'reports.view',
                 'notifications.view',
             ],
             'consultant' => $consultant,

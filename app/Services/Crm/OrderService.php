@@ -2,6 +2,7 @@
 
 namespace App\Services\Crm;
 
+use App\Enums\Crm\LeadLifecycle;
 use App\Enums\Crm\OrderStatus;
 use App\Enums\Crm\PaymentStatus;
 use App\Enums\Crm\QuotationStatus;
@@ -11,6 +12,7 @@ use App\Models\Crm\OrderItem;
 use App\Models\Crm\Quotation;
 use App\Models\User;
 use App\Services\Crm\CrmAutomationService;
+use App\Support\Crm\CrmContactResolver;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -21,6 +23,7 @@ class OrderService
         private readonly TimelineService $timeline,
         private readonly FunnelService $funnels,
         private readonly DashboardStatsService $dashboardStats,
+        private readonly LeadService $leads,
     ) {}
 
     public function createFromQuotation(Quotation $quotation, User $user): Order
@@ -202,7 +205,20 @@ class OrderService
 
         if ($paymentStatus === PaymentStatus::Paid) {
             $order->update(['status' => OrderStatus::Confirmed]);
-            $this->funnels->moveLeadToStageSlug($order->lead, 'payment-received', $user);
+
+            $order->loadMissing('contact');
+            $contact = $order->contact;
+
+            if ($contact && CrmContactResolver::lifecycleForModel($contact) !== LeadLifecycle::Client) {
+                $contact = $this->leads->convertLifecycle($contact, LeadLifecycle::Client, $user);
+                $order->unsetRelations();
+                $order->refresh();
+                $order->setRelation('contact', $contact);
+            }
+
+            if ($contact) {
+                $this->funnels->moveLeadToStageSlug($contact, 'payment-received', $user);
+            }
 
             app(CrmAutomationService::class)->dispatch('order.paid', [
                 'lead_id' => $order->contact_id,

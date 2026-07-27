@@ -45,6 +45,39 @@ test('users can not authenticate with invalid password', function () {
     $this->assertGuest();
 });
 
+test('inactive users cannot authenticate', function () {
+    $user = User::factory()->inactive()->create();
+
+    $component = Volt::test('pages.auth.login')
+        ->set('form.email', $user->email)
+        ->set('form.password', 'password');
+
+    $component->call('login');
+
+    $component
+        ->assertHasErrors(['form.email'])
+        ->assertNoRedirect();
+
+    $this->assertGuest();
+});
+
+test('inactive users are logged out when accessing the portal', function () {
+    $this->seed(RolesSeeder::class);
+
+    $user = User::factory()->create(['is_active' => true]);
+    $user->roles()->attach(Role::query()->where('slug', 'member')->firstOrFail());
+
+    $this->actingAs($user);
+
+    $user->forceFill(['is_active' => false])->save();
+
+    $this->get('/dashboard')
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors('email');
+
+    $this->assertGuest();
+});
+
 test('dashboard navigation can be rendered', function () {
     $this->seed(RolesSeeder::class);
 

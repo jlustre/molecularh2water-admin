@@ -6,7 +6,6 @@ use App\Models\Crm\ActivityType;
 use App\Models\Crm\CrmProduct;
 use App\Models\Crm\CrmProductCategory;
 use App\Models\Crm\Funnel;
-use App\Models\Crm\FunnelStage;
 use App\Models\Crm\LandingPage;
 use App\Models\Crm\LeadCaptureForm;
 use App\Models\Crm\LeadSource;
@@ -15,7 +14,6 @@ use App\Models\Crm\Tag;
 use App\Models\Crm\Team;
 use App\Models\Role;
 use App\Models\User;
-use App\Services\Crm\FunnelService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -115,31 +113,11 @@ class CrmSeeder extends Seeder
             );
         }
 
-        $funnel = Funnel::query()->updateOrCreate(
-            ['slug' => config('crm.default_funnel_slug', 'sales-funnel')],
-            [
-                'name' => 'Retail Sales Funnel',
-                'description' => 'Demonstration-based direct sales pipeline for premium consumer products.',
-                'is_default' => true,
-                'is_active' => true,
-            ],
-        );
+        $this->call(FunnelsSeeder::class);
 
-        app(FunnelService::class)->seedStages($funnel, config('crm.default_stages', []));
-
-        foreach (config('crm.additional_pipelines', []) as $pipeline) {
-            $extraFunnel = Funnel::query()->updateOrCreate(
-                ['slug' => $pipeline['slug']],
-                [
-                    'name' => $pipeline['name'],
-                    'description' => $pipeline['description'] ?? null,
-                    'is_default' => false,
-                    'is_active' => true,
-                ],
-            );
-
-            app(FunnelService::class)->seedStages($extraFunnel, $pipeline['stages'] ?? []);
-        }
+        $funnel = Funnel::query()
+            ->where('slug', config('crm.default_funnel_slug', 'sales-funnel'))
+            ->first();
 
         $team = Team::query()->updateOrCreate(
             ['slug' => 'sales-team'],
@@ -159,28 +137,30 @@ class CrmSeeder extends Seeder
             }
         }
 
-        $page = LandingPage::query()->updateOrCreate(
-            ['slug' => 'water-awareness-show'],
-            [
-                'funnel_id' => $funnel->id,
-                'business_line' => 'h2s',
-                'title' => 'Water Awareness Show',
-                'headline' => 'Experience Molecular Hydrogen Water',
-                'subheadline' => 'Schedule a show or request more information.',
-                'cta_label' => 'Get Started',
-                'thank_you_headline' => 'Thank you!',
-                'thank_you_body' => 'A team member will contact you shortly.',
-                'tracking_source' => 'Landing Page',
-                'is_published' => true,
-            ],
-        );
+        if ($funnel) {
+            $page = LandingPage::query()->updateOrCreate(
+                ['slug' => 'water-awareness-show'],
+                [
+                    'funnel_id' => $funnel->id,
+                    'business_line' => 'h2s',
+                    'title' => 'Water Awareness Show',
+                    'headline' => 'Experience Molecular Hydrogen Water',
+                    'subheadline' => 'Schedule a show or request more information.',
+                    'cta_label' => 'Get Started',
+                    'thank_you_headline' => 'Thank you!',
+                    'thank_you_body' => 'A team member will contact you shortly.',
+                    'tracking_source' => 'Landing Page',
+                    'is_published' => true,
+                ],
+            );
 
-        LeadCaptureForm::query()->updateOrCreate(
-            ['landing_page_id' => $page->id],
-            [
-                'fields' => config('crm.landing_pages.default_form_fields', []),
-                'settings' => config('crm.landing_pages.default_form_settings', []),
-            ],
-        );
+            LeadCaptureForm::query()->updateOrCreate(
+                ['landing_page_id' => $page->id],
+                [
+                    'fields' => config('crm.landing_pages.default_form_fields', []),
+                    'settings' => config('crm.landing_pages.default_form_settings', []),
+                ],
+            );
+        }
     }
 }

@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
 
         $this->call([
+            PermissionCatalogSeeder::class,
             RolesSeeder::class,
             ExistingUsersSeeder::class,
             MediaItemsSeeder::class,
@@ -27,6 +28,7 @@ class DatabaseSeeder extends Seeder
             EmailMappingsSeeder::class,
             WebsiteContentSettingsSeeder::class,
             CrmSeeder::class,
+            DirectoryCustomersSeeder::class,
             CalendarSeeder::class,
             CalendarWidgetsDemoSeeder::class,
             MemberSalesDemoSeeder::class,

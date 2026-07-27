@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\Crm\EngagementType;
 use App\Enums\Crm\LeadStatus;
 use App\Enums\Crm\LeadTemperature;
 use App\Models\Crm\FunnelStage;
@@ -24,6 +25,7 @@ class RecruitFactory extends Factory
             'lifecycle_id' => Lifecycle::idFor('recruit'),
             'business_line' => 'h2s',
             'status' => LeadStatus::New,
+            'engagement_type' => EngagementType::Recruit,
             'temperature' => LeadTemperature::Cold,
             'score' => fake()->numberBetween(0, 100),
             'first_name' => fake()->firstName(),

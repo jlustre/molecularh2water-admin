@@ -35,9 +35,16 @@ class CalendarDashboard extends Component
 
     public bool $show_appointments = true;
 
+    public bool $show_demos = true;
+
+    public bool $show_meetings = true;
+
+    /** When true, the calendar is locked to the signed-in user (Workspace → My Calendar). */
+    public bool $personalOnly = false;
+
     public ?string $statusMessage = null;
 
-    public function mount(?int $lead = null, ?string $date = null, ?string $view = null): void
+    public function mount(?int $lead = null, ?string $date = null, ?string $view = null, ?bool $personal = null): void
     {
         abort_unless(auth()->user()?->hasPermission('calendar.view'), 403);
 
@@ -49,6 +56,30 @@ class CalendarDashboard extends Component
 
         if ($view && in_array($view, $this->allowedViews(), true)) {
             $this->view = $view;
+        }
+
+        $routeName = request()->route()?->getName() ?? '';
+
+        if ($personal !== null) {
+            $this->personalOnly = $personal;
+        } elseif (str_contains($routeName, 'my-calendar')) {
+            $this->personalOnly = true;
+        }
+
+        if ($this->personalOnly) {
+            $this->filter_user_id = auth()->id();
+            $this->show_tasks = true;
+            $this->show_appointments = true;
+            $this->show_demos = true;
+            $this->show_meetings = true;
+            $this->filter_shows_only = false;
+        }
+    }
+
+    public function updatedFilterUserId(mixed $value): void
+    {
+        if ($this->personalOnly) {
+            $this->filter_user_id = auth()->id();
         }
     }
 
@@ -126,7 +157,9 @@ class CalendarDashboard extends Component
             'statuses' => CalendarEventStatus::cases(),
             'assignableUsers' => $this->assignableUsers(),
             'canManage' => auth()->user()?->hasPermission('calendar.manage'),
-            'canAssign' => CalendarScope::userCanViewAll() || CalendarScope::userCanViewTeam(),
+            'canAssign' => ! $this->personalOnly
+                && (CalendarScope::userCanViewAll() || CalendarScope::userCanViewTeam()),
+            'personalOnly' => $this->personalOnly,
         ])->layout($this->crmLayout());
     }
 

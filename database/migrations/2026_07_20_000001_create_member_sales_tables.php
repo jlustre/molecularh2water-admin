@@ -67,9 +67,14 @@ return new class extends Migration
                 $table->decimal('total', 12, 2)->default(0);
                 $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->timestamps();
+                $table->softDeletes();
 
                 $table->index(['user_id', 'status']);
                 $table->index(['business_line', 'status']);
+            });
+        } elseif (! Schema::hasColumn('member_sales', 'deleted_at')) {
+            Schema::table('member_sales', function (Blueprint $table) {
+                $table->softDeletes();
             });
         }
 

@@ -18,10 +18,8 @@ class PortalNavigation
             'workspace',
             'crm_people',
             'crm_pipeline',
-            'crm_schedule',
             'crm_insights',
             'crm_setup',
-            'account',
         ];
 
         return collect(AppNavigation::links($user))

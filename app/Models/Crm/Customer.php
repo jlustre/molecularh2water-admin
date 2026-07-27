@@ -3,10 +3,9 @@
 namespace App\Models\Crm;
 
 use App\Contracts\Crm\CrmContact;
-use App\Enums\Crm\LeadLifecycle;
+use App\Enums\Crm\EngagementType;
 use App\Enums\Crm\LeadTemperature;
 use App\Models\Crm\Concerns\IsCrmContact;
-use App\Support\Crm\CrmScope;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'lifecycle_id',
     'business_line',
     'status',
+    'engagement_type',
     'temperature',
     'score',
     'first_name',
@@ -58,7 +58,9 @@ class Customer extends Model implements CrmContact
 
     protected function casts(): array
     {
-        return $this->crmContactCasts();
+        return array_merge($this->crmContactCasts(), [
+            'engagement_type' => EngagementType::class,
+        ]);
     }
 
     protected static function newFactory(): CustomerFactory
@@ -75,5 +77,78 @@ class Customer extends Model implements CrmContact
     {
         return $query->whereDate('next_follow_up_at', '<=', now()->toDateString())
             ->whereNotNull('next_follow_up_at');
+    }
+
+    public function locationSummary(): string
+    {
+        return collect([
+            $this->address,
+            $this->city,
+            $this->state,
+        ])
+            ->filter()
+            ->implode(', ');
+    }
+
+    public function latestOrder(): ?Order
+    {
+        if ($this->relationLoaded('orders')) {
+            return $this->orders->first();
+        }
+
+        return $this->orders()->with(['items.product'])->first();
+    }
+
+    public function productsSummaryLabel(): string
+    {
+        $orders = $this->relationLoaded('orders')
+            ? $this->orders
+            : $this->orders()->with(['items.product'])->get();
+
+        $items = $orders->flatMap(fn (Order $order) => $order->items);
+
+        if ($items->isEmpty()) {
+            return '—';
+        }
+
+        return $items
+            ->map(function (OrderItem $item) {
+                $name = trim((string) ($item->product?->name ?: $item->description ?: 'Product'));
+                $quantity = (int) $item->quantity;
+
+                return $quantity > 1 ? "{$name} ×{$quantity}" : $name;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->implode(', ');
+    }
+
+    /**
+     * @return array{
+     *     id: int,
+     *     name: string,
+     *     email: ?string,
+     *     phone: ?string,
+     *     street_address: ?string,
+     *     city: ?string,
+     *     state: ?string,
+     *     postal_code: ?string
+     * }
+     */
+    public function toInstallerFormPayload(): array
+    {
+        $metadata = is_array($this->metadata) ? $this->metadata : [];
+
+        return [
+            'id' => $this->id,
+            'name' => $this->fullName(),
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'street_address' => $this->address,
+            'city' => $this->city,
+            'state' => $this->state,
+            'postal_code' => isset($metadata['postal_code']) ? (string) $metadata['postal_code'] : null,
+        ];
     }
 }

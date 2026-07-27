@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Crm;
 
+use App\Enums\Crm\EngagementType;
 use App\Enums\Crm\LeadLifecycle;
 use App\Livewire\Crm\Concerns\UsesCrmLayout;
 use App\Models\Crm\Customer;
@@ -65,6 +66,14 @@ class LeadProfile extends Component
 
         $this->lead = $leadService->convertLifecycle($this->lead, $lifecycle, auth()->user());
 
+        if ($lifecycle === LeadLifecycle::Recruit && $this->lead instanceof Customer) {
+            session()->flash('status', 'Marked as customer & recruit (type B).');
+
+            $this->redirect(CrmRoutes::url('customers.show', ['lead' => $this->lead]), navigate: true);
+
+            return;
+        }
+
         session()->flash('status', "Converted to {$lifecycle->label()}.");
 
         $this->redirect(match ($lifecycle) {
@@ -122,6 +131,11 @@ class LeadProfile extends Component
         return $this->canConvertTo(LeadLifecycle::Client);
     }
 
+    public function canConvertToRecruit(): bool
+    {
+        return $this->canConvertTo(LeadLifecycle::Recruit);
+    }
+
     public function render()
     {
         $view = $this->lead->lifecycle === LeadLifecycle::Prospect
@@ -141,7 +155,18 @@ class LeadProfile extends Component
             LeadLifecycle::Client => $this->lead->lifecycle === LeadLifecycle::Prospect
                 && auth()->user()?->hasPermission('clients.manage'),
             LeadLifecycle::Lead => false,
-            LeadLifecycle::Recruit => false,
+            LeadLifecycle::Recruit => (
+                (
+                    $this->lead->lifecycle === LeadLifecycle::Client
+                    && $this->lead instanceof Customer
+                    && $this->lead->engagement_type !== EngagementType::Both
+                    && auth()->user()?->hasPermission('clients.manage')
+                )
+                || (
+                    in_array($this->lead->lifecycle, [LeadLifecycle::Lead, LeadLifecycle::Prospect], true)
+                    && auth()->user()?->hasPermission('recruits.manage')
+                )
+            ),
         };
     }
 }

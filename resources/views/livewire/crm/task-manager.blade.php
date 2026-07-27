@@ -7,8 +7,8 @@
 
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-            <p class="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">CRM</p>
-            <h1 class="mt-1 text-3xl font-bold text-slate-900">Tasks & Follow-Ups</h1>
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">My Workspace</p>
+            <h1 class="mt-1 text-3xl font-bold text-slate-900">My Tasks</h1>
             <p class="mt-1 text-sm text-slate-500">Track to-dos, priorities, due dates, and reminders.</p>
         </div>
         @if (auth()->user()?->hasPermission('tasks.manage'))

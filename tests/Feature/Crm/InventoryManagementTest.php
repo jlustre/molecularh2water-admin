@@ -42,11 +42,27 @@ it('allows admins to receive and adjust inventory with movement history', functi
         ->and(StockMovement::query()->where('crm_product_id', $product->id)->where('type', 'receive')->exists())->toBeTrue();
 });
 
-it('blocks members from inventory write actions', function () {
+it('denies consultants inventory access by default', function () {
     $member = User::factory()->create();
     $member->roles()->attach(Role::query()->where('slug', 'consultant')->first());
 
     Livewire::actingAs($member)
+        ->test(InventoryManager::class)
+        ->assertForbidden();
+});
+
+it('blocks view-only roles from inventory write actions', function () {
+    $viewer = User::factory()->create();
+    $role = Role::query()->where('slug', 'editor')->firstOrFail();
+    $role->update([
+        'permissions' => array_values(array_unique(array_merge(
+            $role->permissions ?? [],
+            ['products.view', 'admin.dashboard.view'],
+        ))),
+    ]);
+    $viewer->roles()->attach($role);
+
+    Livewire::actingAs($viewer->fresh())
         ->test(InventoryManager::class)
         ->assertOk()
         ->assertSet('canManage', false)

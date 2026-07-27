@@ -45,6 +45,16 @@
                     Convert to Customer
                 </button>
             @endif
+            @if ($this->canConvertToRecruit())
+                <button
+                    class="inline-flex items-center justify-center rounded-full bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-700"
+                    type="button"
+                    wire:click="convertTo('recruit')"
+                    wire:confirm="{{ $lead->lifecycle === \App\Enums\Crm\LeadLifecycle::Client ? 'Mark this customer as a recruit too (type B)?' : 'Convert this record to a recruit (type R)?' }}"
+                >
+                    {{ $lead->lifecycle === \App\Enums\Crm\LeadLifecycle::Client ? 'Mark as Recruit (B)' : 'Convert to Recruit' }}
+                </button>
+            @endif
             @can('delete', $lead)
                 <button
                     class="inline-flex items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-5 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"

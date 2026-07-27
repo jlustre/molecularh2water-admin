@@ -90,10 +90,17 @@ class LeadOrdersPanel extends Component
             'payment_reference' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $orders->recordPayment($order, $validated, auth()->user());
+        $order = $orders->recordPayment($order, $validated, auth()->user());
 
         $this->reset(['payment_amount', 'payment_method', 'payment_reference']);
-        $this->lead->refresh();
+
+        $contact = $order->contact;
+
+        if ($contact) {
+            $this->lead = $contact;
+        } else {
+            $this->lead->refresh();
+        }
     }
 
     public function scheduleDelivery(int $orderId, DeliveryService $deliveries): void

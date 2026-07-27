@@ -5,6 +5,7 @@ namespace App\Livewire\Crm;
 use App\Livewire\Crm\Concerns\UsesCrmLayout;
 use App\Models\Crm\Funnel;
 use App\Models\Crm\FunnelStage;
+use App\Services\Crm\FunnelSeederExporter;
 use App\Services\Crm\FunnelService;
 use App\Support\Crm\PipelineContacts;
 use Illuminate\Support\Facades\Schema;
@@ -105,7 +106,44 @@ class FunnelManager extends Component
 
         $this->funnelId = $funnel->id;
         $this->reset(['newFunnelName', 'newFunnelDescription']);
+        $this->cancelEdit();
         session()->flash('status', 'Pipeline created.');
+    }
+
+    public function selectFunnel(int $funnelId): void
+    {
+        abort_unless(
+            Funnel::query()->where('is_active', true)->whereKey($funnelId)->exists(),
+            404,
+        );
+
+        $this->funnelId = $funnelId;
+        $this->cancelEdit();
+        $this->resetErrorBag('funnel');
+    }
+
+    public function deleteFunnel(int $funnelId, FunnelService $funnelService): void
+    {
+        $funnel = Funnel::query()->where('is_active', true)->whereKey($funnelId)->firstOrFail();
+
+        try {
+            $funnelService->deleteFunnel($funnel);
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->addError('funnel', $exception->errors()['funnel'][0] ?? 'Unable to delete pipeline.');
+
+            return;
+        }
+
+        if ($this->funnelId === $funnelId) {
+            $this->funnelId = Funnel::query()
+                ->where('is_active', true)
+                ->orderByDesc('is_default')
+                ->orderBy('name')
+                ->value('id');
+            $this->cancelEdit();
+        }
+
+        session()->flash('status', 'Pipeline deleted.');
     }
 
     public function startEdit(int $stageId): void
@@ -172,14 +210,49 @@ class FunnelManager extends Component
         $this->editColor = 'slate';
     }
 
+    public function updateSeeder(FunnelSeederExporter $exporter): void
+    {
+        abort_unless($this->canUpdateSeeder(), 403);
+
+        $result = $exporter->export();
+
+        session()->flash(
+            'status',
+            'FunnelsSeeder.php updated with '.$result['funnel_count'].' funnel'
+                .($result['funnel_count'] === 1 ? '' : 's')
+                .' and '.$result['stage_count'].' stage'
+                .($result['stage_count'] === 1 ? '' : 's').'.',
+        );
+    }
+
+    public function canUpdateSeeder(): bool
+    {
+        return (bool) auth()->user()?->isSuperAdmin();
+    }
+
     public function render()
     {
         $funnels = Schema::hasTable('funnels')
-            ? Funnel::query()->where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get()
+            ? Funnel::query()
+                ->where('is_active', true)
+                ->withCount('stages')
+                ->orderByDesc('is_default')
+                ->orderBy('name')
+                ->get()
             : collect();
 
-        $stages = $this->funnel()
-            ? $this->funnel()->stages()->orderBy('sort_order')->get()
+        $funnels->each(function (Funnel $funnel) {
+            $funnel->contacts_count = PipelineContacts::countForFunnel($funnel->id);
+        });
+
+        if ($this->funnelId && ! $funnels->contains('id', $this->funnelId)) {
+            $this->funnelId = $funnels->first()?->id;
+        }
+
+        $selectedFunnel = $this->funnel();
+
+        $stages = $selectedFunnel
+            ? $selectedFunnel->stages()->orderBy('sort_order')->get()
             : collect();
 
         $stages->each(function (FunnelStage $stage) {
@@ -188,6 +261,7 @@ class FunnelManager extends Component
 
         return view('livewire.crm.funnel-manager', [
             'funnels' => $funnels,
+            'selectedFunnel' => $selectedFunnel,
             'stages' => $stages,
             'stageColors' => config('crm.stage_colors', []),
         ])->layout($this->crmLayout());

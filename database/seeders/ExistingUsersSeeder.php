@@ -40,6 +40,9 @@ class ExistingUsersSeeder extends Seeder
                     'password' => $userData['password'],
                     'email_verified_at' => $userData['email_verified_at'] ?? null,
                     'business_lines' => $userData['business_lines'] ?? null,
+                    'is_active' => array_key_exists('is_active', $userData)
+                        ? (bool) $userData['is_active']
+                        : true,
                     'sponsor_id' => null,
                 ],
             );

@@ -5,6 +5,7 @@ use App\Livewire\Crm\Calendar\CalendarDetailPanel;
 use App\Livewire\Crm\Calendar\CalendarEventModal;
 use App\Livewire\Crm\Calendar\CalendarGrid;
 use App\Models\Crm\Activity;
+use App\Models\Crm\Appointment;
 use App\Models\Crm\CalendarEvent;
 use App\Models\Crm\CalendarEventType;
 use App\Models\Crm\Lead;
@@ -12,6 +13,7 @@ use App\Models\Crm\Task;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Crm\CalendarEventService;
+use App\Support\Navigation\AppNavigation;
 use Database\Seeders\CalendarSeeder;
 use Database\Seeders\CrmSeeder;
 use Database\Seeders\RolesSeeder;
@@ -204,20 +206,25 @@ it('scopes calendar events to the assigned agent', function () {
     $agentA = calendarAgent('Agent A');
     $agentB = calendarAgent('Agent B');
     $type = CalendarEventType::query()->first();
+    $day = now()->startOfMonth()->addDays(10)->setHour(10)->setMinute(0);
 
     CalendarEvent::factory()->forUser($agentA)->create([
         'calendar_event_type_id' => $type->id,
         'title' => 'Visible event',
+        'start_at' => $day,
+        'end_at' => $day->copy()->addHour(),
     ]);
 
     CalendarEvent::factory()->forUser($agentB)->create([
         'calendar_event_type_id' => $type->id,
         'title' => 'Hidden event',
+        'start_at' => $day,
+        'end_at' => $day->copy()->addHour(),
     ]);
 
     Livewire::actingAs($agentA)
         ->test(CalendarGrid::class, [
-            'focusDate' => now()->toDateString(),
+            'focusDate' => $day->toDateString(),
             'view' => 'month',
             'filters' => [],
         ])
@@ -230,14 +237,18 @@ it('allows admins to view all calendar events', function () {
     $agent = calendarAgent();
     $type = CalendarEventType::query()->first();
 
+    $day = now()->startOfMonth()->addDays(10)->setHour(10)->setMinute(0);
+
     CalendarEvent::factory()->forUser($agent)->create([
         'calendar_event_type_id' => $type->id,
         'title' => 'Team event',
+        'start_at' => $day,
+        'end_at' => $day->copy()->addHour(),
     ]);
 
     Livewire::actingAs($admin)
         ->test(CalendarGrid::class, [
-            'focusDate' => now()->toDateString(),
+            'focusDate' => $day->toDateString(),
             'view' => 'month',
             'filters' => [],
         ])
@@ -599,4 +610,94 @@ it('dispatches open-calendar-details when widget view is clicked', function () {
         ])
         ->call('openDetails', 'task', $task->id)
         ->assertDispatched('open-calendar-details', kind: 'task', id: $task->id);
+});
+
+it('places My Calendar under workspace navigation', function () {
+    $agent = calendarAgent();
+    $links = collect(AppNavigation::links($agent));
+
+    expect($links->firstWhere('key', 'crm-my-calendar'))->not->toBeNull()
+        ->and($links->firstWhere('key', 'crm-my-calendar')['section'])->toBe('workspace')
+        ->and($links->firstWhere('key', 'crm-my-calendar')['label'])->toBe('My Calendar')
+        ->and($links->firstWhere('key', 'crm-my-calendar')['route'])->toBe('portal.crm.my-calendar.index')
+        ->and($links->firstWhere('key', 'crm-calendar'))->toBeNull();
+});
+
+it('renders My Calendar as a personal schedule locked to the signed-in user', function () {
+    $agent = calendarAgent('My Calendar Owner');
+    $other = calendarAgent('Other Consultant');
+    $type = CalendarEventType::query()->first();
+    $day = now()->startOfHour();
+
+    CalendarEvent::factory()->forUser($agent)->create([
+        'calendar_event_type_id' => $type->id,
+        'title' => 'Mine meeting',
+        'start_at' => $day,
+        'end_at' => $day->copy()->addHour(),
+    ]);
+
+    CalendarEvent::factory()->forUser($other)->create([
+        'calendar_event_type_id' => $type->id,
+        'title' => 'Other meeting',
+        'start_at' => $day,
+        'end_at' => $day->copy()->addHour(),
+    ]);
+
+    Appointment::factory()->forUser($agent)->create([
+        'title' => 'Mine appointment',
+        'starts_at' => $day->copy()->addHours(2),
+        'ends_at' => $day->copy()->addHours(3),
+    ]);
+
+    Task::factory()->forUser($agent)->create([
+        'title' => 'Mine task',
+        'due_at' => $day->copy()->addHours(4),
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($agent)
+        ->get(route('portal.crm.my-calendar.index'))
+        ->assertOk()
+        ->assertSee('My Calendar')
+        ->assertSee('Your calendars, appointments, demos, tasks, and meetings')
+        ->assertSee('Showing only your schedule.');
+
+    Livewire::actingAs($agent)
+        ->test(CalendarDashboard::class, ['personal' => true])
+        ->assertSet('personalOnly', true)
+        ->assertSet('filter_user_id', $agent->id)
+        ->assertSet('show_tasks', true)
+        ->assertSet('show_appointments', true)
+        ->assertSet('show_demos', true)
+        ->assertSet('show_meetings', true)
+        ->set('filter_user_id', $other->id)
+        ->assertSet('filter_user_id', $agent->id);
+
+    Livewire::actingAs($agent)
+        ->test(CalendarGrid::class, [
+            'focusDate' => $day->toDateString(),
+            'view' => 'month',
+            'filters' => [
+                'user_id' => $agent->id,
+                'show_tasks' => true,
+                'show_appointments' => true,
+                'show_demos' => true,
+                'show_meetings' => true,
+                'personal_only' => true,
+            ],
+        ])
+        ->assertSee('Mine meeting')
+        ->assertSee('Mine appointment')
+        ->assertSee('Mine task')
+        ->assertDontSee('Other meeting');
+});
+
+it('keeps Team Calendar distinct from My Calendar', function () {
+    $agent = calendarAgent();
+
+    $this->actingAs($agent)
+        ->get(route('portal.crm.calendar.index'))
+        ->assertOk()
+        ->assertSee('Team Calendar')
+        ->assertDontSee('Showing only your schedule.');
 });

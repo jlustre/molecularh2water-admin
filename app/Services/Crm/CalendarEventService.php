@@ -14,11 +14,14 @@ use App\Models\Crm\Recruit;
 use App\Models\Crm\Task;
 use App\Models\User;
 use App\Support\BusinessLineResolver;
+use App\Support\Crm\CalendarRecurrence;
 use App\Support\Crm\CalendarScope;
 use App\Support\Crm\CrmContactResolver;
 use App\Support\Crm\CrmScope;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class CalendarEventService
@@ -29,6 +32,52 @@ class CalendarEventService
     ) {}
 
     /**
+     * Create a single event, or a materialized recurring series when recurrence is set.
+     *
+     * @param  array<string, mixed>  $data
+     * @return Collection<int, CalendarEvent>
+     */
+    public function createSeries(array $data, User $actor): Collection
+    {
+        $rule = (string) Arr::get($data, 'recurrence', 'none');
+        $count = (int) Arr::get($data, 'recurrence_count', 8);
+        $schedule = $this->normalizeSchedule($data);
+
+        $occurrences = CalendarRecurrence::buildOccurrences(
+            $schedule['start_at'],
+            $schedule['end_at'] ?? $schedule['start_at']->copy()->addHour(),
+            $rule,
+            $count,
+            $schedule['is_all_day'],
+        );
+
+        $groupId = $rule === 'none' ? null : CalendarRecurrence::newGroupId();
+        $baseMetadata = Arr::get($data, 'metadata', []) ?? [];
+
+        return collect($occurrences)->values()->map(function (array $window, int $index) use ($data, $actor, $rule, $groupId, $baseMetadata, $occurrences, $schedule) {
+            [$start, $end] = $window;
+
+            $metadata = $baseMetadata;
+            if ($rule !== 'none' && $groupId) {
+                $metadata = array_merge($metadata, [
+                    'recurrence_rule' => $rule,
+                    'recurrence_group_id' => $groupId,
+                    'recurrence_index' => $index + 1,
+                    'recurrence_total' => count($occurrences),
+                ]);
+            }
+
+            return $this->create(array_merge($data, [
+                'start_at' => $start,
+                'end_at' => $end,
+                'is_all_day' => $schedule['is_all_day'],
+                'metadata' => $metadata,
+                'recurrence' => 'none',
+            ]), $actor);
+        });
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public function create(array $data, User $actor): CalendarEvent
@@ -37,6 +86,7 @@ class CalendarEventService
         $assigneeId = $this->resolveAssigneeId($data, $actor);
         $contact = $this->resolveContact($data, $actor);
         $related = $this->resolveRelated($data, $contact);
+        $schedule = $this->normalizeSchedule($data);
 
         $event = CalendarEvent::query()->create([
             'user_id' => $assigneeId,
@@ -47,11 +97,13 @@ class CalendarEventService
             'related_type' => $related['type'],
             'related_id' => $related['id'],
             'calendar_event_type_id' => $type->id,
+            'user_calendar_id' => $this->resolveUserCalendarId($data, $actor),
             'task_id' => Arr::get($data, 'task_id'),
             'title' => trim((string) Arr::get($data, 'title')),
             'description' => Arr::get($data, 'description'),
-            'start_at' => Arr::get($data, 'start_at'),
-            'end_at' => Arr::get($data, 'end_at'),
+            'start_at' => $schedule['start_at'],
+            'end_at' => $schedule['end_at'],
+            'is_all_day' => $schedule['is_all_day'],
             'timezone' => Arr::get($data, 'timezone', config('calendar.default_timezone')),
             'location' => Arr::get($data, 'location'),
             'meeting_link' => Arr::get($data, 'meeting_link'),
@@ -89,6 +141,11 @@ class CalendarEventService
 
         $contact = $this->resolveContact($data, $actor, $event->crmContact());
         $related = $this->resolveRelated($data, $contact, $event);
+        $schedule = $this->normalizeSchedule(array_merge([
+            'start_at' => $event->start_at,
+            'end_at' => $event->end_at,
+            'is_all_day' => $event->is_all_day,
+        ], $data));
 
         $event->update([
             'user_id' => $this->resolveAssigneeId($data, $actor, $event->user_id),
@@ -96,10 +153,14 @@ class CalendarEventService
             'related_type' => $related['type'],
             'related_id' => $related['id'],
             'calendar_event_type_id' => Arr::get($data, 'calendar_event_type_id', $event->calendar_event_type_id),
+            'user_calendar_id' => array_key_exists('user_calendar_id', $data)
+                ? $this->resolveUserCalendarId($data, $actor, $event->user_calendar_id)
+                : $event->user_calendar_id,
             'title' => trim((string) Arr::get($data, 'title', $event->title)),
             'description' => Arr::get($data, 'description', $event->description),
-            'start_at' => Arr::get($data, 'start_at', $event->start_at),
-            'end_at' => Arr::get($data, 'end_at', $event->end_at),
+            'start_at' => $schedule['start_at'],
+            'end_at' => $schedule['end_at'],
+            'is_all_day' => $schedule['is_all_day'],
             'timezone' => Arr::get($data, 'timezone', $event->timezone),
             'location' => Arr::get($data, 'location', $event->location),
             'meeting_link' => Arr::get($data, 'meeting_link', $event->meeting_link),
@@ -385,6 +446,40 @@ class CalendarEventService
 
     /**
      * @param  array<string, mixed>  $data
+     * @return array{start_at: Carbon, end_at: ?Carbon, is_all_day: bool}
+     */
+    private function normalizeSchedule(array $data): array
+    {
+        $isAllDay = (bool) Arr::get($data, 'is_all_day', false);
+        $start = Carbon::parse(Arr::get($data, 'start_at'));
+        $endRaw = Arr::get($data, 'end_at');
+
+        if ($isAllDay) {
+            $end = Carbon::parse($endRaw ?: $start)->endOfDay();
+            $start = $start->copy()->startOfDay();
+
+            if ($end->lt($start)) {
+                $end = $start->copy()->endOfDay();
+            }
+
+            return [
+                'start_at' => $start,
+                'end_at' => $end,
+                'is_all_day' => true,
+            ];
+        }
+
+        $end = $endRaw ? Carbon::parse($endRaw) : null;
+
+        return [
+            'start_at' => $start,
+            'end_at' => $end,
+            'is_all_day' => false,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
      */
     private function resolveAssigneeId(array $data, User $actor, ?int $fallback = null): int
     {
@@ -393,6 +488,41 @@ class CalendarEventService
         }
 
         return $actor->id;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveUserCalendarId(array $data, User $actor, ?int $fallback = null): ?int
+    {
+        $calendars = app(UserCalendarService::class);
+        $accessible = $calendars->accessibleCalendarIds($actor);
+
+        if (Arr::has($data, 'user_calendar_id')) {
+            $calendarId = Arr::get($data, 'user_calendar_id');
+
+            if (blank($calendarId)) {
+                return null;
+            }
+
+            $calendarId = (int) $calendarId;
+
+            if (! in_array($calendarId, $accessible, true)) {
+                throw ValidationException::withMessages([
+                    'user_calendar_id' => 'You do not have access to that calendar.',
+                ]);
+            }
+
+            return $calendarId;
+        }
+
+        if ($fallback && in_array($fallback, $accessible, true)) {
+            return $fallback;
+        }
+
+        $calendars->ensureDefaults($actor);
+
+        return $calendars->defaultCalendarId($actor);
     }
 
     private function ensureAccessible(CalendarEvent $event, User $actor): void

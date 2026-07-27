@@ -21,11 +21,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'related_type',
     'related_id',
     'calendar_event_type_id',
+    'user_calendar_id',
     'task_id',
     'title',
     'description',
     'start_at',
     'end_at',
+    'is_all_day',
     'timezone',
     'location',
     'meeting_link',
@@ -52,6 +54,7 @@ class CalendarEvent extends Model
             'priority' => CalendarEventPriority::class,
             'start_at' => 'datetime',
             'end_at' => 'datetime',
+            'is_all_day' => 'boolean',
             'reminder_enabled' => 'boolean',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
@@ -77,6 +80,11 @@ class CalendarEvent extends Model
     public function type(): BelongsTo
     {
         return $this->belongsTo(CalendarEventType::class, 'calendar_event_type_id');
+    }
+
+    public function userCalendar(): BelongsTo
+    {
+        return $this->belongsTo(UserCalendar::class, 'user_calendar_id');
     }
 
     public function related(): MorphTo

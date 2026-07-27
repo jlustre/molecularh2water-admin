@@ -25,7 +25,26 @@ it('allows an admin to manage users', function () {
     $this->actingAs($admin)
         ->get(route('admin.users.index', ['search' => 'taylor', 'status' => 'verified']))
         ->assertOk()
-        ->assertSee('Taylor Verified');
+        ->assertSee('Taylor Verified')
+        ->assertSee('Active');
+
+    User::factory()->inactive()->create([
+        'name' => 'Inactive Member',
+        'email' => 'inactive.member@example.com',
+        'sponsor_id' => $admin->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.users.index', ['account_status' => 'inactive']))
+        ->assertOk()
+        ->assertSee('Inactive Member')
+        ->assertDontSee('Taylor Verified');
+
+    $this->actingAs($admin)
+        ->get(route('admin.users.index', ['account_status' => 'active']))
+        ->assertOk()
+        ->assertSee('Taylor Verified')
+        ->assertDontSee('Inactive Member');
 
     $this->actingAs($admin)
         ->get(route('admin.users.create'))
@@ -57,12 +76,19 @@ it('allows an admin to manage users', function () {
         ->assertSee('morgan@example.com');
 
     $this->actingAs($admin)
+        ->get(route('admin.users.edit', $createdUser))
+        ->assertOk()
+        ->assertSee('Account Status')
+        ->assertSee('Inactive users cannot sign in');
+
+    $this->actingAs($admin)
         ->put(route('admin.users.update', $createdUser), [
             'name' => 'Morgan Updated',
             'email' => 'morgan.updated@example.com',
             'password' => 'new-password',
             'password_confirmation' => 'new-password',
             'email_status' => 'unverified',
+            'account_status' => 'inactive',
             'sponsor_id' => $admin->id,
         ])
         ->assertRedirect(route('admin.users.index'));
@@ -72,6 +98,7 @@ it('allows an admin to manage users', function () {
     expect($createdUser->name)->toBe('Morgan Updated');
     expect($createdUser->email)->toBe('morgan.updated@example.com');
     expect($createdUser->email_verified_at)->toBeNull();
+    expect($createdUser->is_active)->toBeFalse();
     expect(Hash::check('new-password', $createdUser->password))->toBeTrue();
 
     $this->actingAs($admin)
@@ -109,6 +136,7 @@ it('allows an admin to update a user avatar', function () {
             'name' => $user->name,
             'email' => $user->email,
             'email_status' => 'verified',
+            'account_status' => 'active',
             'sponsor_id' => $admin->id,
             'avatar' => UploadedFile::fake()->image('new-avatar.png', 240, 240),
         ])

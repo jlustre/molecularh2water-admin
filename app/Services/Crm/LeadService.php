@@ -2,6 +2,7 @@
 
 namespace App\Services\Crm;
 
+use App\Enums\Crm\EngagementType;
 use App\Enums\Crm\LeadLifecycle;
 use App\Enums\Crm\LeadStatus;
 use App\Models\Crm\Customer;
@@ -213,6 +214,20 @@ class LeadService
             'next_follow_up_at' => Arr::get($data, 'next_follow_up_at'),
             'consent_given' => (bool) Arr::get($data, 'consent_given', $existing?->consent_given ?? false),
         ];
+
+        if (in_array($lifecycle, [LeadLifecycle::Client, LeadLifecycle::Recruit], true)) {
+            $defaultType = $lifecycle === LeadLifecycle::Client
+                ? EngagementType::Customer->value
+                : EngagementType::Recruit->value;
+
+            $payload['engagement_type'] = Arr::get(
+                $data,
+                'engagement_type',
+                $existing?->getAttribute('engagement_type')?->value
+                    ?? $existing?->getAttribute('engagement_type')
+                    ?? $defaultType,
+            );
+        }
 
         $stageId = Arr::get($data, 'funnel_stage_id', $existing?->funnel_stage_id);
         $stage = $stageId ? FunnelStage::query()->find($stageId) : null;

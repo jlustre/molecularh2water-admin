@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\Crm\EngagementType;
 use App\Enums\Crm\LeadStatus;
 use App\Enums\Crm\LeadTemperature;
 use App\Models\Crm\Customer;
@@ -24,6 +25,7 @@ class CustomerFactory extends Factory
             'lifecycle_id' => Lifecycle::idFor('client'),
             'business_line' => 'h2s',
             'status' => LeadStatus::Customer,
+            'engagement_type' => EngagementType::Customer,
             'temperature' => LeadTemperature::Cold,
             'score' => fake()->numberBetween(0, 100),
             'first_name' => fake()->firstName(),

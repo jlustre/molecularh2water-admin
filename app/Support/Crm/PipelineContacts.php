@@ -68,6 +68,20 @@ class PipelineContacts
         return $total;
     }
 
+    public static function countForFunnel(int $funnelId, ?User $user = null): int
+    {
+        $total = 0;
+
+        foreach (self::modelClasses() as $modelClass) {
+            $total += CrmScope::contacts(
+                $modelClass::query()->where('funnel_id', $funnelId),
+                $user,
+            )->count();
+        }
+
+        return $total;
+    }
+
     public static function findAccessible(string $type, int $id, ?User $user = null): Model
     {
         $modelClass = match ($type) {

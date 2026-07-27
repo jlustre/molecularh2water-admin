@@ -42,6 +42,16 @@
                         Convert to Customer
                     </button>
                 @endif
+                @if ($this->canConvertToRecruit())
+                    <button
+                        class="rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-violet-700"
+                        type="button"
+                        wire:click="convertTo('recruit')"
+                        wire:confirm="Convert this prospect to a recruit (type R)?"
+                    >
+                        Convert to Recruit
+                    </button>
+                @endif
                 @can('delete', $lead)
                     <button
                         class="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100"

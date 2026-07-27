@@ -21,6 +21,6 @@ it('excludes profile and resources from quick links', function () {
         ->and($actionLabels)->not->toContain('Admin Portal')
         ->and($actionLabels)->not->toContain('My Profile')
         ->and($actionLabels)->not->toContain('Resources')
-        ->and($actionLabels)->toContain('Member Invites')
+        ->and($actionLabels)->not->toContain('Member Invites')
         ->and($actionLabels)->toContain('Prospects');
 });

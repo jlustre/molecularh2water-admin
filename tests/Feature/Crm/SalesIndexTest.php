@@ -4,6 +4,7 @@ use App\Enums\Crm\MemberSaleStatus;
 use App\Models\Crm\MemberSale;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Navigation\AppNavigation;
 use App\Support\Portal\PortalNavigation;
 use Database\Seeders\CrmSeeder;
 use Database\Seeders\RolesSeeder;
@@ -28,20 +29,29 @@ function salesAgent(string $name = 'Sales Agent'): User
     return $user;
 }
 
-it('places a single consultant sales link after activities in portal navigation', function () {
+it('places consultant sales products and inventory under system navigation for admins', function () {
+    $admin = salesAdmin();
+    $links = collect(AppNavigation::links($admin));
+
+    expect($links->firstWhere('key', 'crm-sales'))->not->toBeNull()
+        ->and($links->firstWhere('key', 'crm-sales')['section'])->toBe('system')
+        ->and($links->firstWhere('key', 'crm-products')['section'])->toBe('system')
+        ->and($links->firstWhere('key', 'crm-inventory')['section'])->toBe('system')
+        ->and($links->firstWhere('key', 'crm-sales')['route'])->toBe('admin.crm.sales.index');
+});
+
+it('hides consultant sales products and inventory from portal navigation', function () {
     $agent = salesAgent();
     $labels = collect(PortalNavigation::links($agent))->pluck('label')->values()->all();
 
-    expect($labels)->toContain('Consultant Sales')
-        ->and($labels)->not->toContain('Orders & Quotes')
-        ->and(collect($labels)->filter(fn ($label) => $label === 'Consultant Sales')->count())->toBe(1)
-        ->and(array_search('Consultant Sales', $labels, true))
-        ->toBeGreaterThan(array_search('Activities', $labels, true));
+    expect($labels)->not->toContain('Consultant Sales')
+        ->and($labels)->not->toContain('Products & Gifts')
+        ->and($labels)->not->toContain('Inventory')
+        ->and($labels)->toContain('Activities');
 });
 
-it('renders the consultant sales page for admins and agents', function () {
+it('renders the consultant sales page for admins', function () {
     $admin = salesAdmin();
-    $agent = salesAgent();
 
     $this->actingAs($admin)
         ->get(route('admin.crm.sales.index'))
@@ -50,15 +60,40 @@ it('renders the consultant sales page for admins and agents', function () {
         ->assertSee('Consultant')
         ->assertSee('Demo consultant')
         ->assertSee('Add Sale');
+});
+
+it('denies consultants consultant sales by default', function () {
+    $agent = salesAgent();
 
     $this->actingAs($agent)
         ->get(route('portal.crm.sales.index'))
+        ->assertForbidden();
+});
+
+it('allows a non-admin role when sales.view is granted and admin access exists', function () {
+    $editor = User::factory()->create();
+    $editorRole = Role::query()->where('slug', 'editor')->firstOrFail();
+    $editorRole->update([
+        'permissions' => array_values(array_unique(array_merge(
+            $editorRole->permissions ?? [],
+            ['sales.view', 'admin.dashboard.view'],
+        ))),
+    ]);
+    $editor->roles()->attach($editorRole);
+
+    $links = collect(AppNavigation::links($editor->fresh()));
+
+    expect($links->firstWhere('key', 'crm-sales'))->not->toBeNull()
+        ->and($links->firstWhere('key', 'crm-sales')['section'])->toBe('system');
+
+    $this->actingAs($editor->fresh())
+        ->get(route('admin.crm.sales.index'))
         ->assertOk()
-        ->assertSee('Consultant Sales')
-        ->assertDontSee('Add Sale');
+        ->assertSee('Consultant Sales');
 });
 
 it('shows scoped consultant sales on the sales page', function () {
+    $admin = salesAdmin();
     $agent = salesAgent();
     $other = salesAgent('Other Sales Agent');
     $demo = salesAgent('Demo Helper');
@@ -85,13 +120,13 @@ it('shows scoped consultant sales on the sales page', function () {
         'total' => 500,
     ]);
 
-    $this->actingAs($agent)
-        ->get(route('portal.crm.sales.index'))
+    $this->actingAs($admin)
+        ->get(route('admin.crm.sales.index'))
         ->assertOk()
         ->assertSee('Mine Contact')
         ->assertSee($agent->name)
         ->assertSee($demo->name)
-        ->assertDontSee('Theirs Contact');
+        ->assertSee('Theirs Contact');
 });
 
 it('denies access without sales.view permission', function () {
@@ -99,7 +134,7 @@ it('denies access without sales.view permission', function () {
     $editor->roles()->attach(Role::query()->where('slug', 'editor')->first());
 
     $this->actingAs($editor)
-        ->get(route('portal.crm.sales.index'))
+        ->get(route('admin.crm.sales.index'))
         ->assertForbidden();
 });
 

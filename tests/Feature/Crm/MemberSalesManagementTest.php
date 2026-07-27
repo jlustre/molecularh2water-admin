@@ -39,6 +39,25 @@ function salesManagerUser(): User
     return $user;
 }
 
+function grantSalesCatalogView(User $user, array $extra = []): User
+{
+    $permissions = array_values(array_unique(array_merge(
+        ['sales.view', 'products.view'],
+        $extra,
+    )));
+
+    foreach ($user->roles as $role) {
+        $role->update([
+            'permissions' => array_values(array_unique(array_merge(
+                $role->permissions ?? [],
+                $permissions,
+            ))),
+        ]);
+    }
+
+    return $user->fresh(['roles']);
+}
+
 it('allows admins to manage member sales', function () {
     $admin = salesAdminUser();
 
@@ -64,8 +83,16 @@ it('allows admins to manage member sales', function () {
     expect(MemberSale::query()->where('customer_name', 'Test Customer')->exists())->toBeTrue();
 });
 
-it('blocks members from creating sales', function () {
+it('denies consultants consultant sales by default', function () {
     $member = salesMemberUser();
+
+    Livewire::actingAs($member)
+        ->test(MemberSalesManager::class)
+        ->assertForbidden();
+});
+
+it('blocks view-only roles from creating sales', function () {
+    $member = grantSalesCatalogView(salesMemberUser());
 
     Livewire::actingAs($member)
         ->test(MemberSalesManager::class)
@@ -76,8 +103,8 @@ it('blocks members from creating sales', function () {
 });
 
 it('scopes consultant sales to the logged-in consultant', function () {
-    $memberA = salesMemberUser('Consultant A');
-    $memberB = salesMemberUser('Consultant B');
+    $memberA = grantSalesCatalogView(salesMemberUser('Consultant A'));
+    $memberB = grantSalesCatalogView(salesMemberUser('Consultant B'));
 
     MemberSale::query()->create([
         'user_id' => $memberA->id,
@@ -104,8 +131,8 @@ it('scopes consultant sales to the logged-in consultant', function () {
 });
 
 it('shows sales to the demo consultant as well as the primary consultant', function () {
-    $learner = salesMemberUser('Learning Consultant');
-    $mentor = salesMemberUser('Demo Mentor');
+    $learner = grantSalesCatalogView(salesMemberUser('Learning Consultant'));
+    $mentor = grantSalesCatalogView(salesMemberUser('Demo Mentor'));
 
     MemberSale::query()->create([
         'user_id' => $learner->id,
@@ -126,8 +153,8 @@ it('shows sales to the demo consultant as well as the primary consultant', funct
 });
 
 
-it('allows managers to view team member sales read-only', function () {
-    $manager = salesManagerUser();
+it('allows managers with sales.view to view team member sales read-only', function () {
+    $manager = grantSalesCatalogView(salesManagerUser());
     $member = salesMemberUser('Team Member');
 
     MemberSale::query()->create([
@@ -172,8 +199,16 @@ it('allows admins to manage products gifts and categories', function () {
     expect(CrmProduct::query()->where('sku', 'DEMO-SKU-1')->exists())->toBeTrue();
 });
 
-it('blocks members from product management actions', function () {
+it('denies consultants product management by default', function () {
     $member = salesMemberUser();
+
+    Livewire::actingAs($member)
+        ->test(CrmProductManager::class)
+        ->assertForbidden();
+});
+
+it('blocks view-only roles from product management actions', function () {
+    $member = grantSalesCatalogView(salesMemberUser());
 
     Livewire::actingAs($member)
         ->test(CrmProductManager::class)
@@ -231,4 +266,30 @@ it('registers consultant sales and products routes', function () {
     $this->actingAs($admin)
         ->get(route('admin.crm.products.index'))
         ->assertOk();
+});
+
+it('soft deletes member sales instead of removing them', function () {
+    $admin = salesAdminUser();
+
+    $sale = MemberSale::query()->create([
+        'user_id' => $admin->id,
+        'customer_name' => 'Soft Delete Customer',
+        'status' => MemberSaleStatus::ApplicationStarted,
+        'business_line' => 'both',
+        'application_started_at' => now(),
+        'created_by' => $admin->id,
+        'total' => 250,
+        'subtotal' => 250,
+        'gifts_total' => 0,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(MemberSalesManager::class)
+        ->call('deleteSale', $sale->id)
+        ->assertHasNoErrors();
+
+    expect(MemberSale::query()->find($sale->id))->toBeNull()
+        ->and(MemberSale::withTrashed()->find($sale->id))->not->toBeNull();
+
+    $this->assertSoftDeleted('member_sales', ['id' => $sale->id]);
 });

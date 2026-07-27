@@ -46,8 +46,26 @@ class CalendarQueryService
             $entries = $entries->merge($this->appointmentEntries($rangeStart, $rangeEnd, $filters, $user));
         }
 
-        if (($filters['show_events'] ?? true) && empty($filters['show_category']) && empty($filters['event_type_id'])) {
-            $entries = $this->mergeDemonstrationEntries($entries, $rangeStart, $rangeEnd, $user);
+        if (
+            ($filters['show_events'] ?? true)
+            && ($filters['show_demos'] ?? true)
+            && empty($filters['show_category'])
+            && empty($filters['event_type_id'])
+        ) {
+            $entries = $this->mergeDemonstrationEntries($entries, $rangeStart, $rangeEnd, $filters, $user);
+        }
+
+        if (($filters['show_meetings'] ?? true) === false) {
+            $entries = $entries->reject(function (stdClass $entry) {
+                return ($entry->type_category ?? null) === CalendarEventCategory::Meeting->value;
+            })->values();
+        }
+
+        if (($filters['show_demos'] ?? true) === false) {
+            $entries = $entries->reject(function (stdClass $entry) {
+                return $entry->kind === 'demonstration'
+                    || ($entry->type_category ?? null) === CalendarEventCategory::Demo->value;
+            })->values();
         }
 
         return $entries->sortBy('start_at')->values();
@@ -233,12 +251,56 @@ class CalendarQueryService
     private function calendarEvents(Carbon $rangeStart, Carbon $rangeEnd, array $filters, ?User $user): Collection
     {
         return CalendarScope::events(CalendarEvent::query(), $user)
-            ->with(['type', 'user', 'related'])
-            ->where(function ($query) use ($rangeStart, $rangeEnd) {
-                $query->whereBetween('start_at', [$rangeStart, $rangeEnd])
-                    ->orWhereBetween('end_at', [$rangeStart, $rangeEnd]);
+            ->with(['type', 'user', 'related', 'userCalendar'])
+            ->where('start_at', '<=', $rangeEnd)
+            ->where(function ($query) use ($rangeStart) {
+                $query->where('end_at', '>=', $rangeStart)
+                    ->orWhere(function ($legacy) use ($rangeStart) {
+                        $legacy->whereNull('end_at')
+                            ->where('start_at', '>=', $rangeStart);
+                    });
             })
-            ->when($filters['user_id'] ?? null, fn ($q, $id) => $q->where('user_id', $id))
+            ->when($filters['user_id'] ?? null, function ($q, $id) use ($user) {
+                $accessible = $user && Schema::hasTable('user_calendars')
+                    ? app(UserCalendarService::class)->accessibleCalendarIds($user)
+                    : [];
+
+                if ($accessible === []) {
+                    $q->where('user_id', $id);
+
+                    return;
+                }
+
+                $visibleIds = app(UserCalendarService::class)->visibleCalendarIds($user);
+
+                $q->where(function ($inner) use ($visibleIds, $id) {
+                    $inner->where(function ($legacy) use ($id) {
+                        $legacy->whereNull('user_calendar_id')
+                            ->where('user_id', $id);
+                    });
+
+                    if ($visibleIds !== []) {
+                        $inner->orWhereIn('user_calendar_id', $visibleIds);
+                    }
+                });
+            })
+            ->when(
+                ! ($filters['user_id'] ?? null)
+                && $user
+                && Schema::hasTable('user_calendars')
+                && app(UserCalendarService::class)->accessibleCalendarIds($user) !== [],
+                function ($q) use ($user) {
+                    $visibleIds = app(UserCalendarService::class)->visibleCalendarIds($user);
+
+                    $q->where(function ($inner) use ($visibleIds) {
+                        $inner->whereNull('user_calendar_id');
+
+                        if ($visibleIds !== []) {
+                            $inner->orWhereIn('user_calendar_id', $visibleIds);
+                        }
+                    });
+                }
+            )
             ->when($filters['team_id'] ?? null, fn ($q, $id) => $q->where('team_id', $id))
             ->when($filters['event_type_id'] ?? null, fn ($q, $id) => $q->where('calendar_event_type_id', $id))
             ->when($filters['show_category'] ?? null, function ($q, $category) {
@@ -336,22 +398,33 @@ class CalendarQueryService
      * @param  Collection<int, stdClass>  $entries
      * @return Collection<int, stdClass>
      */
-    private function mergeDemonstrationEntries(Collection $entries, Carbon $rangeStart, Carbon $rangeEnd, ?User $user): Collection
-    {
+    /**
+     * @param  array<string, mixed>  $filters
+     * @param  Collection<int, stdClass>  $entries
+     * @return Collection<int, stdClass>
+     */
+    private function mergeDemonstrationEntries(
+        Collection $entries,
+        Carbon $rangeStart,
+        Carbon $rangeEnd,
+        array $filters,
+        ?User $user,
+    ): Collection {
         $linkedEventIds = $entries
             ->where('kind', 'event')
             ->pluck('id');
 
-        $demonstrations = $this->demonstrationEntries($rangeStart, $rangeEnd, $user)
+        $demonstrations = $this->demonstrationEntries($rangeStart, $rangeEnd, $filters, $user)
             ->reject(fn (stdClass $entry) => $entry->calendar_event_id && $linkedEventIds->contains($entry->calendar_event_id));
 
         return $entries->merge($demonstrations);
     }
 
     /**
+     * @param  array<string, mixed>  $filters
      * @return Collection<int, stdClass>
      */
-    private function demonstrationEntries(Carbon $rangeStart, Carbon $rangeEnd, ?User $user): Collection
+    private function demonstrationEntries(Carbon $rangeStart, Carbon $rangeEnd, array $filters, ?User $user): Collection
     {
         $user ??= auth()->user();
 
@@ -367,6 +440,7 @@ class CalendarQueryService
                 DemonstrationStatus::Confirmed->value,
             ])
             ->whereBetween('scheduled_at', [$rangeStart, $rangeEnd])
+            ->when($filters['user_id'] ?? null, fn ($q, $id) => $q->where('user_id', $id))
             ->orderBy('scheduled_at')
             ->get()
             ->map(function (Demonstration $demo) {
@@ -448,8 +522,16 @@ class CalendarQueryService
         $entry->id = $event->id;
         $entry->title = $event->title;
         $entry->start_at = $event->start_at;
-        $entry->end_at = $event->end_at ?? $event->start_at?->copy()->addHour();
-        $entry->color = $event->type?->color ?? 'teal';
+        $entry->end_at = $event->end_at ?? ($event->is_all_day
+            ? $event->start_at?->copy()->endOfDay()
+            : $event->start_at?->copy()->addHour());
+        $entry->is_all_day = (bool) $event->is_all_day;
+        $entry->is_recurring = filled($event->metadata['recurrence_group_id'] ?? null)
+            && ($event->metadata['recurrence_rule'] ?? 'none') !== 'none';
+        $entry->recurrence_label = $entry->is_recurring
+            ? \App\Support\Crm\CalendarRecurrence::labelFor((string) ($event->metadata['recurrence_rule'] ?? 'none'))
+            : null;
+        $entry->color = $event->userCalendar?->color ?: ($event->type?->color ?? 'teal');
         $entry->status = $event->status?->value ?? 'scheduled';
         $entry->priority = $event->priority?->value ?? 'normal';
         $entry->lead_id = $event->related instanceof Lead ? $event->related->id : null;
@@ -465,6 +547,8 @@ class CalendarQueryService
         $entry->location = $event->location;
         $entry->meeting_link = $event->meeting_link;
         $entry->description = $event->description;
+        $entry->calendar_id = $event->user_calendar_id;
+        $entry->calendar_name = $event->userCalendar?->name;
 
         return $entry;
     }

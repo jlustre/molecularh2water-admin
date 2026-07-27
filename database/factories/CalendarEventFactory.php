@@ -11,6 +11,7 @@ use App\Models\Crm\Lead;
 use App\Models\Crm\Prospect;
 use App\Models\Crm\Recruit;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -31,6 +32,7 @@ class CalendarEventFactory extends Factory
             'description' => fake()->optional()->sentence(),
             'start_at' => $start,
             'end_at' => $start->copy()->addHour(),
+            'is_all_day' => false,
             'timezone' => config('calendar.default_timezone', 'UTC'),
             'status' => CalendarEventStatus::Scheduled,
             'priority' => CalendarEventPriority::Normal,
@@ -57,6 +59,18 @@ class CalendarEventFactory extends Factory
         return $this->state(fn () => [
             'start_at' => now()->addMinutes(30),
             'end_at' => now()->addMinutes(90),
+        ]);
+    }
+
+    public function allDay(?Carbon $start = null, int $days = 1): static
+    {
+        $startDay = ($start ?? now())->copy()->startOfDay();
+        $endDay = $startDay->copy()->addDays(max(1, $days) - 1)->endOfDay();
+
+        return $this->state(fn () => [
+            'is_all_day' => true,
+            'start_at' => $startDay,
+            'end_at' => $endDay,
         ]);
     }
 }

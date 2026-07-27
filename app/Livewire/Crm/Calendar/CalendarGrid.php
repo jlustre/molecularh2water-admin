@@ -3,6 +3,7 @@
 namespace App\Livewire\Crm\Calendar;
 
 use App\Services\Crm\CalendarQueryService;
+use App\Support\Crm\CalendarMonthLayout;
 use Carbon\Carbon;
 use Livewire\Attributes\Isolate;
 use Livewire\Attributes\On;
@@ -75,9 +76,14 @@ class CalendarGrid extends Component
         $focus = Carbon::parse($this->focusDate);
         [$rangeStart, $rangeEnd] = $this->resolveRange($focus);
 
-        $entries = $calendar->entries($rangeStart, $rangeEnd, $this->filters);
-        $entriesByDate = $entries->groupBy(fn ($entry) => $entry->start_at->format('Y-m-d'));
+        $entries = CalendarMonthLayout::decorate(
+            $calendar->entries($rangeStart, $rangeEnd, $this->filters)
+        );
+        $entriesByDate = CalendarMonthLayout::entriesByDate($entries, $rangeStart, $rangeEnd);
         $countsByDate = $entriesByDate->map->count();
+        $monthWeeks = $this->view === 'month'
+            ? CalendarMonthLayout::weeks($focus, $entries)
+            : [];
 
         $selectedDayEntries = collect();
         $selectedDayLabel = null;
@@ -86,7 +92,10 @@ class CalendarGrid extends Component
             $selected = Carbon::parse($this->selectedDay);
             $selectedDayLabel = $selected->format('l, F j, Y');
             $selectedDayEntries = $entriesByDate->get($this->selectedDay, collect())
-                ->sortBy(fn ($entry) => $entry->start_at?->timestamp ?? 0)
+                ->sortBy([
+                    fn ($entry) => $entry->is_all_day ? 0 : 1,
+                    fn ($entry) => $entry->start_at?->timestamp ?? 0,
+                ])
                 ->values();
         }
 
@@ -95,6 +104,7 @@ class CalendarGrid extends Component
             'entries' => $entries,
             'entriesByDate' => $entriesByDate,
             'countsByDate' => $countsByDate,
+            'monthWeeks' => $monthWeeks,
             'selectedDayEntries' => $selectedDayEntries,
             'selectedDayLabel' => $selectedDayLabel,
             'typeColors' => config('calendar.type_colors', []),

@@ -14,12 +14,14 @@ use App\Livewire\Crm\LeadProfile;
 use App\Livewire\Crm\CrmProductManager;
 use App\Livewire\Crm\InventoryManager;
 use App\Livewire\Crm\MemberSalesManager;
+use App\Livewire\Crm\MySales;
 use App\Livewire\Crm\Pages\ClientsIndex;
 use App\Livewire\Crm\Pages\LeadsIndex;
 use App\Livewire\Crm\Pages\ProspectsIndex;
 use App\Livewire\Crm\Pages\RecruitsIndex;
 use App\Livewire\Crm\ExecutiveDashboard;
 use App\Livewire\Crm\ReportDashboard;
+use App\Livewire\Crm\TaskManagement;
 use App\Livewire\Crm\TaskManager;
 use App\Models\Crm\Customer;
 use App\Models\Crm\Lead;
@@ -155,7 +157,16 @@ Route::middleware(['permission:tasks.view'])->group(function () {
     Route::get('/tasks', TaskManager::class)->name('tasks.index');
 });
 
+Route::middleware(['permission:tasks.assign'])->group(function () {
+    Route::get('/task-management', TaskManagement::class)->name('task-management.index');
+});
+
+Route::middleware(['permission:portal.dashboard.view'])->group(function () {
+    Route::get('/my-sales', MySales::class)->name('my-sales.index');
+});
+
 Route::middleware(['permission:calendar.view'])->group(function () {
+    Route::get('/my-calendar', CalendarDashboard::class)->name('my-calendar.index');
     Route::get('/calendar', CalendarDashboard::class)->name('calendar.index');
 });
 

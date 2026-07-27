@@ -38,6 +38,16 @@ class LoginForm extends Form
             ]);
         }
 
+        $user = Auth::user();
+
+        if ($user && ! $user->isActive()) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'form.email' => 'This account has been inactivated. Contact an administrator for help.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

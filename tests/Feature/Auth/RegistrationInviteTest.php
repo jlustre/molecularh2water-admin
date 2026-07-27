@@ -17,7 +17,14 @@ beforeEach(function () {
 function sponsorUser(string $name = 'Sponsor User'): User
 {
     $user = User::factory()->create(['name' => $name]);
-    $user->roles()->attach(Role::query()->where('slug', 'consultant')->first());
+    $consultant = Role::query()->where('slug', 'consultant')->first();
+    $consultant->update([
+        'permissions' => array_values(array_unique(array_merge(
+            $consultant->permissions ?? [],
+            ['invites.manage'],
+        ))),
+    ]);
+    $user->roles()->attach($consultant);
 
     return $user;
 }
@@ -69,7 +76,8 @@ it('registers a member with a one-time invite and links sponsor', function () {
         ->and($user->sponsor_id)->toBe($sponsor->id)
         ->and($user->roles()->where('slug', 'member')->exists())->toBeTrue()
         ->and($user->hasPermission('leads.view'))->toBeTrue()
-        ->and($user->hasPermission('crm.dashboard.view'))->toBeTrue();
+        ->and($user->hasPermission('crm.dashboard.view'))->toBeFalse()
+        ->and($user->hasPermission('invites.manage'))->toBeFalse();
 
     $invite->refresh();
 

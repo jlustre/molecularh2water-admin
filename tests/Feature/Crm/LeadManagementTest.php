@@ -128,7 +128,42 @@ it('converts a lead to prospect and then to client', function () {
 
     $customer = Customer::query()->where('email', 'convert-flow@example.com')->first();
     expect($customer)->not->toBeNull()
-        ->and($customer->lifecycleSlug())->toBe(LeadLifecycle::Client);
+        ->and($customer->lifecycleSlug())->toBe(LeadLifecycle::Client)
+        ->and($customer->engagement_type?->value)->toBe('C');
+});
+
+it('marks a customer as both when converting to recruit and moves lead or prospect to recruit only', function () {
+    $admin = crmAdmin();
+
+    $customer = Customer::factory()->create([
+        'email' => 'both-type@example.com',
+        'assigned_user_id' => $admin->id,
+        'engagement_type' => \App\Enums\Crm\EngagementType::Customer,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(LeadProfile::class, ['lead' => $customer])
+        ->call('convertTo', LeadLifecycle::Recruit)
+        ->assertRedirect(route('admin.crm.customers.show', $customer->fresh()));
+
+    expect($customer->fresh()->engagement_type?->value)->toBe('B')
+        ->and(Recruit::query()->where('email', 'both-type@example.com')->exists())->toBeFalse();
+
+    $lead = Lead::factory()->create([
+        'email' => 'recruit-only@example.com',
+        'assigned_user_id' => $admin->id,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(LeadProfile::class, ['lead' => $lead])
+        ->call('convertTo', LeadLifecycle::Recruit)
+        ->assertRedirect(route('admin.crm.recruits.show', Recruit::query()->where('email', 'recruit-only@example.com')->first()));
+
+    $recruit = Recruit::query()->where('email', 'recruit-only@example.com')->first();
+
+    expect($recruit)->not->toBeNull()
+        ->and($recruit->engagement_type?->value)->toBe('R')
+        ->and(Lead::query()->where('email', 'recruit-only@example.com')->exists())->toBeFalse();
 });
 
 it('renders customers index with customer label and redirects legacy clients urls', function () {
@@ -196,6 +231,7 @@ it('renders recruits index with recruit lifecycle filter and crud routes', funct
         ->call('deleteLead', $recruit->id);
 
     expect(Recruit::query()->find($recruit->id))->toBeNull();
+    $this->assertSoftDeleted('recruits', ['id' => $recruit->id]);
 });
 
 it('creates a recruit from the recruits create route with recruiting funnel', function () {

@@ -9,7 +9,11 @@ use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\EmailMappingController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\InstallationQuestionnaireController;
+use App\Http\Controllers\Admin\DirectoryCustomerController;
+use App\Http\Controllers\Admin\InstallerController;
 use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\PermissionCatalogController;
+use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\WebsiteContentController;
@@ -104,12 +108,18 @@ Route::middleware(['auth', 'admin.access'])
             ->resource('/blog', BlogPostController::class)
             ->except('show')
             ->parameters(['blog' => 'blogPost']);
-        Route::resource('/faqs', FaqController::class)->except('show');
-        Route::post('/faqs/{faq}/move-up', [FaqController::class, 'moveUp'])->name('faqs.move-up');
-        Route::post('/faqs/{faq}/move-down', [FaqController::class, 'moveDown'])->name('faqs.move-down');
-        Route::post('/media/update-seeder', [MediaController::class, 'updateSeeder'])->name('media.update-seeder');
-        Route::get('/media/{medium}/view-pdf', [MediaController::class, 'viewPdf'])->name('media.view-pdf');
-        Route::resource('/media', MediaController::class)->except('show');
+        Route::middleware('permission:faqs.manage')->group(function () {
+            Route::resource('/faqs', FaqController::class)->except('show');
+            Route::post('/faqs/{faq}/move-up', [FaqController::class, 'moveUp'])->name('faqs.move-up');
+            Route::post('/faqs/{faq}/move-down', [FaqController::class, 'moveDown'])->name('faqs.move-down');
+        });
+        Route::middleware('permission:media.view')->group(function () {
+            Route::get('/media/{medium}/view-pdf', [MediaController::class, 'viewPdf'])->name('media.view-pdf');
+            Route::resource('/media', MediaController::class)->except('show');
+        });
+        Route::middleware('permission:media.export')
+            ->post('/media/update-seeder', [MediaController::class, 'updateSeeder'])
+            ->name('media.update-seeder');
         Route::middleware('permission:settings.manage')->group(function () {
             Route::get('/settings', [SettingsController::class, 'edit'])->name('settings');
             Route::match(['put', 'patch'], '/settings', [SettingsController::class, 'update'])->name('settings.update');
@@ -201,6 +211,42 @@ Route::middleware(['auth', 'admin.access'])
             Route::delete('/installation-questionnaires/{installation_questionnaire}', [InstallationQuestionnaireController::class, 'destroy'])
                 ->name('installation-questionnaires.destroy');
         });
+
+        Route::middleware('permission:customer-directory.view')->group(function () {
+            Route::get('/customers', [DirectoryCustomerController::class, 'index'])->name('customers.index');
+        });
+        Route::middleware('permission:customer-directory.manage')->group(function () {
+            Route::get('/customers/create', [DirectoryCustomerController::class, 'create'])->name('customers.create');
+            Route::post('/customers', [DirectoryCustomerController::class, 'store'])->name('customers.store');
+            Route::get('/customers/{customer}/edit', [DirectoryCustomerController::class, 'edit'])->name('customers.edit');
+            Route::match(['put', 'patch'], '/customers/{customer}', [DirectoryCustomerController::class, 'update'])->name('customers.update');
+            Route::delete('/customers/{customer}', [DirectoryCustomerController::class, 'destroy'])->name('customers.destroy');
+        });
+
+        Route::middleware('permission:installers.view')->group(function () {
+            Route::get('/installers', [InstallerController::class, 'index'])->name('installers.index');
+        });
+        Route::middleware('permission:installers.manage')->group(function () {
+            Route::get('/installers/create', [InstallerController::class, 'create'])->name('installers.create');
+            Route::post('/installers', [InstallerController::class, 'store'])->name('installers.store');
+        });
+        Route::middleware('permission:installers.view')->group(function () {
+            Route::get('/installers/{installer}', [InstallerController::class, 'show'])->name('installers.show');
+        });
+        Route::middleware('permission:installers.manage')->group(function () {
+            Route::get('/installers/{installer}/edit', [InstallerController::class, 'edit'])->name('installers.edit');
+            Route::match(['put', 'patch'], '/installers/{installer}', [InstallerController::class, 'update'])->name('installers.update');
+            Route::post('/installers/{installer}/archive', [InstallerController::class, 'archive'])->name('installers.archive');
+            Route::post('/installers/{installer}/restore', [InstallerController::class, 'restore'])->name('installers.restore');
+            Route::delete('/installers/{installer}', [InstallerController::class, 'destroy'])->name('installers.destroy');
+            Route::post('/installers/{installer}/installations', [InstallerController::class, 'storeInstallation'])
+                ->name('installers.installations.store');
+            Route::match(['put', 'patch'], '/installers/{installer}/installations/{installation}', [InstallerController::class, 'updateInstallation'])
+                ->name('installers.installations.update');
+            Route::delete('/installers/{installer}/installations/{installation}', [InstallerController::class, 'destroyInstallation'])
+                ->name('installers.installations.destroy');
+        });
+
         Route::post('/users/update-seeder', [UserController::class, 'updateSeeder'])
             ->middleware('permission:users.export')
             ->name('users.update-seeder');
@@ -209,11 +255,47 @@ Route::middleware(['auth', 'admin.access'])
         Route::middleware('permission:roles.view')->group(function () {
             Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
         });
+        Route::post('/roles/update-seeder', [RoleController::class, 'updateSeeder'])
+            ->middleware('permission:roles.export')
+            ->name('roles.update-seeder');
         Route::middleware('permission:roles.manage')->group(function () {
             Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create');
             Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
             Route::get('/roles/{role}/edit', [RoleController::class, 'edit'])->name('roles.edit');
             Route::match(['put', 'patch'], '/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
             Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+        });
+
+        Route::middleware('permission:permissions.view')->group(function () {
+            Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions.index');
+        });
+        Route::post('/permissions/update-seeder', [PermissionController::class, 'updateSeeder'])
+            ->middleware('permission:permissions.export')
+            ->name('permissions.update-seeder');
+        Route::middleware('permission:permissions.manage')->group(function () {
+            Route::post('/permission-catalog/categories', [PermissionCatalogController::class, 'storeCategory'])
+                ->name('permission-catalog.categories.store');
+            Route::get('/permission-catalog/categories/{category}/edit', [PermissionCatalogController::class, 'editCategory'])
+                ->name('permission-catalog.categories.edit');
+            Route::match(['put', 'patch'], '/permission-catalog/categories/{category}', [PermissionCatalogController::class, 'updateCategory'])
+                ->name('permission-catalog.categories.update');
+            Route::delete('/permission-catalog/categories/{category}', [PermissionCatalogController::class, 'destroyCategory'])
+                ->name('permission-catalog.categories.destroy');
+
+            Route::post('/permission-catalog/permissions', [PermissionCatalogController::class, 'storePermission'])
+                ->name('permission-catalog.permissions.store');
+            Route::get('/permission-catalog/permissions/{permission}/edit', [PermissionCatalogController::class, 'editPermission'])
+                ->name('permission-catalog.permissions.edit');
+            Route::match(['put', 'patch'], '/permission-catalog/permissions/{permission}', [PermissionCatalogController::class, 'updatePermission'])
+                ->name('permission-catalog.permissions.update');
+            Route::delete('/permission-catalog/permissions/{permission}', [PermissionCatalogController::class, 'destroyPermission'])
+                ->name('permission-catalog.permissions.destroy');
+
+            Route::get('/permissions/{permission}/edit', [PermissionController::class, 'edit'])
+                ->where('permission', '[A-Za-z0-9._-]+')
+                ->name('permissions.edit');
+            Route::match(['put', 'patch'], '/permissions/{permission}', [PermissionController::class, 'update'])
+                ->where('permission', '[A-Za-z0-9._-]+')
+                ->name('permissions.update');
         });
     });

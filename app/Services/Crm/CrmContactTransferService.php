@@ -2,6 +2,7 @@
 
 namespace App\Services\Crm;
 
+use App\Enums\Crm\EngagementType;
 use App\Enums\Crm\LeadLifecycle;
 use App\Enums\Crm\LeadStatus;
 use App\Models\Crm\Customer;
@@ -32,16 +33,28 @@ class CrmContactTransferService
             return $contact;
         }
 
+        // Customer → Recruit: keep the CRM customers row and mark as Both (B).
+        if ($from === LeadLifecycle::Client && $to === LeadLifecycle::Recruit && $contact instanceof Customer) {
+            return $this->markCustomerAsBoth($contact, $user);
+        }
+
         return DB::transaction(function () use ($contact, $from, $to, $user) {
             $targetClass = CrmContactResolver::modelClassFor($to);
             $attributes = collect($contact->getAttributes())
-                ->except(['id', 'created_at', 'updated_at', 'deleted_at'])
+                ->except(['id', 'created_at', 'updated_at', 'deleted_at', 'engagement_type'])
                 ->put('lifecycle_id', Lifecycle::idFor($to))
                 ->put('converted_at', now())
                 ->all();
 
             if ($to === LeadLifecycle::Client) {
                 $attributes['status'] = LeadStatus::Customer->value;
+                $attributes['engagement_type'] = $from === LeadLifecycle::Recruit
+                    ? EngagementType::Both->value
+                    : EngagementType::Customer->value;
+            }
+
+            if ($to === LeadLifecycle::Recruit) {
+                $attributes['engagement_type'] = EngagementType::Recruit->value;
             }
 
             /** @var Lead|Prospect|Customer|Recruit $target */
@@ -64,6 +77,25 @@ class CrmContactTransferService
 
             return $target->fresh(['source', 'stage', 'assignedUser', 'tags', 'funnel', 'lifecycleRecord']);
         });
+    }
+
+    private function markCustomerAsBoth(Customer $customer, User $user): Customer
+    {
+        $customer->update([
+            'engagement_type' => EngagementType::Both,
+            'converted_at' => $customer->converted_at ?? now(),
+        ]);
+
+        $this->timeline->log(
+            $customer,
+            'lifecycle_changed',
+            'Marked as customer & recruit',
+            'Engagement type set to Both (B). Record remains in customers.',
+            ['from' => LeadLifecycle::Client->value, 'to' => LeadLifecycle::Recruit->value, 'engagement_type' => EngagementType::Both->value],
+            $user,
+        );
+
+        return $customer->fresh(['source', 'stage', 'assignedUser', 'tags', 'funnel', 'lifecycleRecord']);
     }
 
     private function reassignMorphChildren(Model $from, Model $to): void

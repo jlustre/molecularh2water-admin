@@ -62,7 +62,14 @@ it('opens the referrals modal from the quick links component', function () {
 
 it('opens member invites modal for members with invite permission', function () {
     $member = User::factory()->create();
-    $member->roles()->attach(Role::query()->where('slug', 'member')->first());
+    $memberRole = Role::query()->where('slug', 'member')->firstOrFail();
+    $memberRole->update([
+        'permissions' => array_values(array_unique(array_merge(
+            $memberRole->permissions ?? [],
+            ['invites.manage'],
+        ))),
+    ]);
+    $member->roles()->attach($memberRole);
 
     Livewire::actingAs($member)
         ->test(QuickLinks::class)

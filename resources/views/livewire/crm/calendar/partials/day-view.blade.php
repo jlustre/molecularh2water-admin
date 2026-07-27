@@ -1,14 +1,28 @@
-@php $dayEntries = $entries->filter(fn ($e) => $e->start_at->isSameDay($focus)); @endphp
+@php
+    $dayEntries = $entries->filter(fn ($e) =>
+        ($e->span_start ?? $e->start_at->copy()->startOfDay())->lte($focus->copy()->startOfDay())
+        && ($e->span_end ?? ($e->end_at ?? $e->start_at)->copy()->startOfDay())->gte($focus->copy()->startOfDay())
+    )->sortBy([
+        fn ($e) => ! empty($e->is_all_day) || ! empty($e->is_bar) ? 0 : 1,
+        fn ($e) => $e->start_at?->timestamp ?? 0,
+    ]);
+@endphp
 
 <div class="space-y-3">
-    @forelse ($dayEntries->sortBy('start_at') as $entry)
+    @forelse ($dayEntries as $entry)
         <button
             type="button"
             class="flex w-full items-start gap-4 rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 p-4 text-left hover:border-teal-300 hover:from-teal-50/50 hover:to-emerald-50/40"
             wire:click="openDetails('{{ $entry->kind }}', {{ $entry->id }})"
         >
-            <div class="w-24 shrink-0 text-sm font-bold text-teal-700">
-                {{ $entry->start_at->format('g:i A') }}
+            <div class="w-28 shrink-0 text-sm font-bold text-teal-700">
+                @if (! empty($entry->is_all_day))
+                    All day
+                @elseif (! empty($entry->spans_multiple_days))
+                    Multi-day
+                @else
+                    {{ $entry->start_at->format('g:i A') }}
+                @endif
             </div>
             <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2">

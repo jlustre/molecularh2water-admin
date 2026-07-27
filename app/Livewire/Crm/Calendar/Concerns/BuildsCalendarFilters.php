@@ -3,6 +3,8 @@
 namespace App\Livewire\Crm\Calendar\Concerns;
 
 use App\Enums\Crm\CalendarEventCategory;
+use App\Services\Crm\UserCalendarService;
+use Illuminate\Support\Facades\Schema;
 
 trait BuildsCalendarFilters
 {
@@ -11,14 +13,29 @@ trait BuildsCalendarFilters
      */
     protected function calendarFilters(): array
     {
+        $userId = ($this->personalOnly ?? false)
+            ? auth()->id()
+            : $this->filter_user_id;
+
+        $visibleCalendarIds = null;
+        $viewer = auth()->user();
+
+        if ($viewer && Schema::hasTable('user_calendars')) {
+            $visibleCalendarIds = app(UserCalendarService::class)->visibleCalendarIds($viewer);
+        }
+
         return [
-            'user_id' => $this->filter_user_id,
+            'user_id' => $userId,
             'event_type_id' => $this->filter_event_type_id,
             'show_category' => $this->filter_shows_only ? CalendarEventCategory::Show->value : null,
             'status' => $this->filter_status,
             'lead_id' => $this->lead_id ?? null,
             'show_tasks' => $this->filter_shows_only ? false : $this->show_tasks,
             'show_appointments' => $this->filter_shows_only ? false : $this->show_appointments,
+            'show_demos' => $this->filter_shows_only ? false : ($this->show_demos ?? true),
+            'show_meetings' => $this->filter_shows_only ? true : ($this->show_meetings ?? true),
+            'personal_only' => (bool) ($this->personalOnly ?? false),
+            'visible_calendar_ids' => $visibleCalendarIds,
         ];
     }
 }

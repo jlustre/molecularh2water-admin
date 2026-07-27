@@ -80,9 +80,19 @@
                         <span class="min-w-0 flex-1">
                             <span class="block font-semibold text-slate-900">{{ $entry->title }}</span>
                             <span class="mt-0.5 block text-xs text-slate-500">
-                                {{ $entry->start_at?->format('g:i A') }}
-                                @if ($entry->end_at && ! $entry->start_at?->eq($entry->end_at))
-                                    – {{ $entry->end_at->format('g:i A') }}
+                                @if (! empty($entry->is_all_day))
+                                    All day
+                                    @if (! empty($entry->spans_multiple_days))
+                                        · {{ $entry->span_start?->format('M j') }} – {{ $entry->span_end?->format('M j') }}
+                                    @endif
+                                @else
+                                    {{ $entry->start_at?->format('g:i A') }}
+                                    @if ($entry->end_at && ! $entry->start_at?->eq($entry->end_at))
+                                        – {{ $entry->end_at->format('g:i A') }}
+                                    @endif
+                                @endif
+                                @if (! empty($entry->is_recurring))
+                                    · Repeats {{ strtolower($entry->recurrence_label ?? '') }}
                                 @endif
                                 @if (! empty($entry->lead_name))
                                     · {{ $entry->lead_name }}

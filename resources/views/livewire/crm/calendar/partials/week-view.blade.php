@@ -7,7 +7,13 @@
     @foreach ($days as $day)
         @php
             $dateKey = $day->format('Y-m-d');
-            $dayEntries = $entries->filter(fn ($e) => $e->start_at->isSameDay($day));
+            $dayEntries = $entries->filter(fn ($e) =>
+                ($e->span_start ?? $e->start_at->copy()->startOfDay())->lte($day->copy()->startOfDay())
+                && ($e->span_end ?? ($e->end_at ?? $e->start_at)->copy()->startOfDay())->gte($day->copy()->startOfDay())
+            )->sortBy([
+                fn ($e) => ! empty($e->is_all_day) || ! empty($e->is_bar) ? 0 : 1,
+                fn ($e) => $e->start_at?->timestamp ?? 0,
+            ]);
             $isSelected = $selectedDay === $dateKey;
         @endphp
         <div
@@ -33,7 +39,15 @@
                         class="block w-full rounded-lg border px-2 py-1.5 text-left text-xs font-semibold {{ $typeColors[$entry->color] ?? 'bg-teal-100 text-teal-800 border-teal-200' }}"
                         wire:click.stop="openDetails('{{ $entry->kind }}', {{ $entry->id }})"
                     >
-                        <span class="block">{{ $entry->start_at->format('g:i A') }}</span>
+                        <span class="block">
+                            @if (! empty($entry->is_all_day))
+                                All day
+                            @elseif (! empty($entry->spans_multiple_days))
+                                Multi-day
+                            @else
+                                {{ $entry->start_at->format('g:i A') }}
+                            @endif
+                        </span>
                         <span class="block truncate">{{ $entry->title }}</span>
                     </button>
                 @empty

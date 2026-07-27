@@ -56,13 +56,21 @@ it('records payment and moves lead to payment received', function () {
     $agent = User::factory()->create();
     $agent->roles()->attach(Role::query()->where('slug', 'consultant')->first());
 
-    $lead = \App\Models\Crm\Lead::factory()->assignedTo($agent)->prospect()->create([
+    $lead = \App\Models\Crm\Prospect::factory()->assignedTo($agent)->create([
         'funnel_id' => FunnelStage::query()->where('slug', 'order-submitted')->value('funnel_id'),
         'funnel_stage_id' => FunnelStage::query()->where('slug', 'order-submitted')->value('id'),
+        'first_name' => 'Paid',
+        'last_name' => 'Customer',
+        'email' => 'paid.customer@example.com',
+        'phone' => '(555) 777-1212',
+        'address' => '500 Payment Ave',
+        'city' => 'Los Angeles',
+        'state' => 'CA',
     ]);
 
     $order = Order::query()->create([
-        'lead_id' => $lead->id,
+        'contact_type' => $lead->getMorphClass(),
+        'contact_id' => $lead->id,
         'user_id' => $agent->id,
         'order_number' => 'O-TEST-0001',
         'status' => 'submitted',
@@ -79,8 +87,23 @@ it('records payment and moves lead to payment received', function () {
         ->call('recordPayment', $order->id)
         ->assertHasNoErrors();
 
-    expect($order->fresh()->payment_status->value)->toBe('paid')
-        ->and($lead->fresh()->stage?->slug)->toBe('payment-received');
+    expect($order->fresh()->payment_status->value)->toBe('paid');
+
+    $customer = \App\Models\Crm\Customer::query()->where('email', 'paid.customer@example.com')->first();
+
+    expect($customer)->not->toBeNull()
+        ->and($customer->stage?->slug)->toBe('payment-received')
+        ->and($customer->engagement_type?->value)->toBe('C')
+        ->and(\App\Models\Crm\Prospect::query()->where('email', 'paid.customer@example.com')->exists())->toBeFalse();
+
+    $this->assertDatabaseMissing('directory_customers', [
+        'email' => 'paid.customer@example.com',
+    ]);
+
+    expect($customer->assigned_user_id)->toBe($agent->id)
+        ->and($customer->phone)->toBe('(555) 777-1212')
+        ->and($customer->address)->toBe('500 Payment Ave')
+        ->and($customer->city)->toBe('Los Angeles');
 });
 
 it('schedules delivery and moves lead to delivery scheduled', function () {
