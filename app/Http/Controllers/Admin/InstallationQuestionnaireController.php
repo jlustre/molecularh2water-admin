@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class InstallationQuestionnaireController extends Controller
 {
@@ -115,6 +116,24 @@ class InstallationQuestionnaireController extends Controller
         return redirect()
             ->route('admin.installation-questionnaires.index')
             ->with('status', 'Installation questionnaire deleted.');
+    }
+
+    public function photo(
+        InstallationQuestionnaire $installationQuestionnaire,
+        int $photo,
+    ): BinaryFileResponse {
+        $photos = $installationQuestionnaire->sinkPhotoItems();
+        abort_unless(isset($photos[$photo]), 404);
+
+        $path = $photos[$photo]['path'];
+        abort_unless(Storage::disk('public')->exists($path), 404);
+
+        $fileName = $photos[$photo]['original_name'] ?: basename($path);
+
+        return response()->file(Storage::disk('public')->path($path), [
+            'Content-Type' => Storage::disk('public')->mimeType($path) ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="'.$fileName.'"',
+        ]);
     }
 
     /**

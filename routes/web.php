@@ -202,6 +202,9 @@ Route::middleware(['auth', 'admin.access'])
                 ->name('installation-questionnaires.index');
             Route::get('/installation-questionnaires/{installation_questionnaire}', [InstallationQuestionnaireController::class, 'show'])
                 ->name('installation-questionnaires.show');
+            Route::get('/installation-questionnaires/{installation_questionnaire}/photos/{photo}', [InstallationQuestionnaireController::class, 'photo'])
+                ->whereNumber('photo')
+                ->name('installation-questionnaires.photos.show');
         });
         Route::middleware('permission:installation-questionnaires.manage')->group(function () {
             Route::get('/installation-questionnaires/{installation_questionnaire}/edit', [InstallationQuestionnaireController::class, 'edit'])

@@ -98,11 +98,17 @@
                 @if ($sinkPhotos !== [])
                     <div class="mt-5 grid gap-4 sm:grid-cols-2">
                         @foreach ($sinkPhotos as $index => $photo)
+                            @php
+                                $photoUrl = route('admin.installation-questionnaires.photos.show', [
+                                    'installation_questionnaire' => $questionnaire,
+                                    'photo' => $index,
+                                ]);
+                            @endphp
                             <div class="space-y-3">
                                 <img
                                     alt="Uploaded sink photo {{ $index + 1 }}"
                                     class="max-h-64 w-full rounded-lg border border-teal-100 object-cover"
-                                    src="{{ $photo['url'] }}"
+                                    src="{{ $photoUrl }}"
                                 >
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <p class="truncate text-xs font-semibold text-slate-500">
@@ -110,7 +116,7 @@
                                     </p>
                                     <a
                                         class="inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-3 py-1.5 text-xs font-bold text-teal-800 transition hover:bg-teal-50"
-                                        href="{{ $photo['url'] }}"
+                                        href="{{ $photoUrl }}"
                                         rel="noreferrer"
                                         target="_blank"
                                     >
