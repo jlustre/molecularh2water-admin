@@ -32,6 +32,12 @@ Route::get('avatars/{filename}', AvatarController::class)
     ->where('filename', '[A-Za-z0-9._-]+')
     ->name('avatars.show');
 
+Route::get('website-forms/media/{websiteFormSubmission}/{media}', [WebsiteFormSubmissionController::class, 'publicMedia'])
+    ->middleware('signed')
+    ->whereNumber('websiteFormSubmission')
+    ->whereNumber('media')
+    ->name('website-forms.media.public');
+
 Route::get('search', GlobalSearchController::class)
     ->middleware(['auth'])
     ->name('search');
@@ -165,6 +171,10 @@ Route::middleware(['auth', 'admin.access'])
             Route::get('/{websiteFormSubmission}', [WebsiteFormSubmissionController::class, 'show'])
                 ->whereNumber('websiteFormSubmission')
                 ->name('website-forms.show');
+            Route::get('/{websiteFormSubmission}/media/{media}', [WebsiteFormSubmissionController::class, 'media'])
+                ->whereNumber('websiteFormSubmission')
+                ->whereNumber('media')
+                ->name('website-forms.media.show');
         });
         Route::middleware('permission:website-forms.manage')->prefix('website-forms/{formType}')->group(function () {
             Route::get('/{websiteFormSubmission}/edit', [WebsiteFormSubmissionController::class, 'edit'])

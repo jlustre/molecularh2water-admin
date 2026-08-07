@@ -9,8 +9,10 @@ use App\Models\WebsiteFormSubmission;
 use App\Support\FrontendUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class WebsiteFormSubmissionController extends Controller
 {
@@ -146,11 +148,51 @@ class WebsiteFormSubmissionController extends Controller
         $type = $this->resolveFormType($formType);
         $this->ensureSubmissionMatchesType($websiteFormSubmission, $type);
 
+        foreach ($websiteFormSubmission->warrantyMediaItems() as $item) {
+            Storage::disk('public')->delete($item['path']);
+        }
+
         $websiteFormSubmission->delete();
 
         return redirect()
             ->route('admin.website-forms.index', $type->routeKey())
             ->with('status', $type->singularLabel().' deleted.');
+    }
+
+    public function media(
+        string $formType,
+        WebsiteFormSubmission $websiteFormSubmission,
+        int $media,
+    ): BinaryFileResponse {
+        $type = $this->resolveFormType($formType);
+        $this->ensureSubmissionMatchesType($websiteFormSubmission, $type);
+
+        return $this->streamWarrantyMediaItem($websiteFormSubmission, $media);
+    }
+
+    public function publicMedia(
+        WebsiteFormSubmission $websiteFormSubmission,
+        int $media,
+    ): BinaryFileResponse {
+        return $this->streamWarrantyMediaItem($websiteFormSubmission, $media);
+    }
+
+    private function streamWarrantyMediaItem(
+        WebsiteFormSubmission $websiteFormSubmission,
+        int $media,
+    ): BinaryFileResponse {
+        $items = $websiteFormSubmission->warrantyMediaItems();
+        abort_unless(isset($items[$media]), 404);
+
+        $path = $items[$media]['path'];
+        abort_unless(Storage::disk('public')->exists($path), 404);
+
+        $fileName = $items[$media]['original_name'] ?: basename($path);
+
+        return response()->file(Storage::disk('public')->path($path), [
+            'Content-Type' => Storage::disk('public')->mimeType($path) ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="'.$fileName.'"',
+        ]);
     }
 
     public function convertToProspect(

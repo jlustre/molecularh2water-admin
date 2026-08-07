@@ -30,6 +30,36 @@
                                 @endforeach
                             </table>
 
+                            @if ($mediaPreviewItems !== [])
+                                <div style="margin-top:20px;padding:16px;border:1px solid #d7f3ef;border-radius:12px;background-color:#f8fffe;">
+                                    <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#0f766e;">Warranty Media</p>
+
+                                    @foreach ($mediaPreviewItems as $item)
+                                        <div style="margin:0 0 14px;padding:12px;border:1px solid #cceee9;border-radius:10px;background-color:#ffffff;">
+                                            <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#073b4c;">{{ $item['name'] }}</p>
+
+                                            @if ($item['is_image'])
+                                                <img src="{{ $item['url'] }}" alt="Warranty image" style="display:block;max-width:100%;height:auto;border-radius:8px;border:1px solid #d7f3ef;">
+                                            @endif
+
+                                            <p style="margin:10px 0 0;font-size:13px;line-height:1.5;color:#475569;">
+                                                @if ($item['is_video'])
+                                                    Video submitted. Use the link below to open it.
+                                                @else
+                                                    If the image preview is blocked by your email client, use the link below.
+                                                @endif
+                                            </p>
+
+                                            <p style="margin:8px 0 0;">
+                                                <a href="{{ $item['url'] }}" style="display:inline-block;background-color:#e6fffa;color:#0f766e;text-decoration:none;font-weight:700;font-size:12px;padding:8px 12px;border-radius:999px;border:1px solid #99f6e4;">
+                                                    Open Media
+                                                </a>
+                                            </p>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+
                             <p style="margin:28px 0 0;">
                                 <a href="{{ $adminUrl }}" style="display:inline-block;background-color:#14b8a6;color:#041f1e;text-decoration:none;font-weight:700;font-size:14px;padding:12px 18px;border-radius:999px;">
                                     Open in admin

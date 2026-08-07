@@ -4,8 +4,11 @@ use App\Enums\Crm\LeadLifecycle;
 use App\Models\Crm\Lifecycle;
 use App\Models\Crm\Prospect;
 use App\Models\Crm\TimelineEvent;
+use App\Models\WebsiteFormSubmission;
 use App\Support\BusinessLineContext;
 use Database\Seeders\CrmSeeder;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->seed(CrmSeeder::class);
@@ -76,6 +79,44 @@ it('requires email or phone and consent for prospect capture', function () {
         'consent_given' => false,
     ])->assertUnprocessable()
         ->assertJsonValidationErrors(['consent_given']);
+});
+
+it('requires warranty concern and media when warranty service is selected', function () {
+    $this->postJson('/api/prospects', [
+        'name' => 'Warranty Customer',
+        'email' => 'warranty@example.com',
+        'interested_in' => 'Warranty Service',
+        'consent_given' => true,
+        'form_context' => 'about-contact',
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['warranty_concern', 'warranty_media']);
+});
+
+it('stores warranty concern and uploaded media for warranty service requests', function () {
+    Storage::fake('public');
+
+    $this->post('/api/prospects', [
+        'name' => 'Warranty Customer',
+        'email' => 'warranty@example.com',
+        'interested_in' => 'Warranty Service',
+        'warranty_concern' => 'The unit is leaking under the sink.',
+        'warranty_media' => [UploadedFile::fake()->image('leak-photo.jpg')],
+        'consent_given' => '1',
+        'form_context' => 'about-contact',
+        'source' => 'website',
+    ], [
+        'Accept' => 'application/json',
+    ])->assertCreated();
+
+    $submission = WebsiteFormSubmission::query()->where('email', 'warranty@example.com')->first();
+
+    expect($submission)->not->toBeNull()
+        ->and($submission->warranty_concern)->toBe('The unit is leaking under the sink.')
+        ->and($submission->warrantyMediaItems())->toHaveCount(1);
+
+    foreach ($submission->warrantyMediaItems() as $item) {
+        Storage::disk('public')->assertExists($item['path']);
+    }
 });
 
 it('silently accepts honeypot prospect submissions', function () {

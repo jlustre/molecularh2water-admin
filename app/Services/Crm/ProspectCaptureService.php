@@ -147,6 +147,8 @@ class ProspectCaptureService
             'preferred_time' => Arr::get($data, 'preferred_time'),
             'interested_in' => Arr::get($data, 'interested_in'),
             'message' => Arr::get($data, 'message'),
+            'warranty_concern' => Arr::get($data, 'warranty_concern'),
+            'warranty_media' => Arr::get($data, 'warranty_media', []),
             'source' => Arr::get($data, 'source', 'website'),
             'form_context' => $formType->formContext(),
             'tracking_source' => Arr::get($data, 'tracking_source'),

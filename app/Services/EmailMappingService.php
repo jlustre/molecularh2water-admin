@@ -12,6 +12,8 @@ use App\Models\WebsiteFormSubmission;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class EmailMappingService
 {
@@ -51,6 +53,49 @@ class EmailMappingService
     {
         $form = NotifiableForm::fromWebsiteFormType($submission->form_type);
         $adminUrl = $this->adminUrlForWebsiteForm($submission);
+        $warrantyMedia = collect($submission->warranty_media ?? [])
+            ->filter(fn ($item) => is_array($item) && filled($item['path'] ?? null))
+            ->values();
+
+        $warrantyMediaCount = $warrantyMedia->count();
+
+        $warrantyMediaAttachments = $warrantyMedia
+            ->filter(fn (array $item) => Storage::disk('public')->exists((string) $item['path']))
+            ->map(fn (array $item) => [
+                'disk' => 'public',
+                'path' => (string) $item['path'],
+                'as' => filled($item['original_name'] ?? null)
+                    ? (string) $item['original_name']
+                    : null,
+            ])
+            ->values()
+            ->all();
+
+        $warrantyMediaPreviews = $warrantyMedia
+            ->filter(fn (array $item) => Storage::disk('public')->exists((string) $item['path']))
+            ->values()
+            ->map(function (array $item, int $index) use ($submission): array {
+                $mimeType = filled($item['mime_type'] ?? null)
+                    ? (string) $item['mime_type']
+                    : (Storage::disk('public')->mimeType((string) $item['path']) ?: 'application/octet-stream');
+
+                return [
+                    'name' => filled($item['original_name'] ?? null)
+                        ? (string) $item['original_name']
+                        : basename((string) $item['path']),
+                    'url' => URL::temporarySignedRoute(
+                        'website-forms.media.public',
+                        now()->addDays(14),
+                        [
+                            'websiteFormSubmission' => $submission,
+                            'media' => $index,
+                        ],
+                    ),
+                    'is_image' => str_starts_with($mimeType, 'image/'),
+                    'is_video' => str_starts_with($mimeType, 'video/'),
+                ];
+            })
+            ->all();
 
         $this->send($form, new FormSubmissionAlert(
             formLabel: $form->label(),
@@ -63,12 +108,18 @@ class EmailMappingService
                 'Preferred time' => $submission->preferred_time,
                 'Interested in' => $submission->interested_in,
                 'Message' => $submission->message,
+                'Warranty concern' => $submission->warranty_concern,
+                'Warranty media files' => $warrantyMediaCount > 0
+                    ? (string) $warrantyMediaCount
+                    : null,
                 'Source' => $submission->source,
                 'Page URL' => $submission->page_url,
                 'Submitted' => $submission->created_at?->timezone(config('app.timezone'))->format('F j, Y g:i A T'),
             ], fn ($value) => filled($value)),
             adminUrl: $adminUrl,
             replyToEmail: $submission->email,
+            fileAttachments: $warrantyMediaAttachments,
+            mediaPreviewItems: $warrantyMediaPreviews,
         ));
     }
 

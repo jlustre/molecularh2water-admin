@@ -135,6 +135,45 @@
             <p class="mt-4 whitespace-pre-line text-sm leading-7 text-slate-700">{{ $submission->message ?: 'No message provided.' }}</p>
         </section>
 
+        @if ($submission->warranty_concern)
+            <section class="rounded-lg border border-teal-100 bg-white p-6 shadow-sm">
+                <h2 class="text-lg font-black text-slate-950">Warranty Concern</h2>
+                <p class="mt-4 whitespace-pre-line text-sm leading-7 text-slate-700">{{ $submission->warranty_concern }}</p>
+            </section>
+        @endif
+
+        @php $warrantyMedia = $submission->warrantyMediaItems(); @endphp
+        @if ($warrantyMedia !== [])
+            <section class="rounded-lg border border-teal-100 bg-white p-6 shadow-sm">
+                <h2 class="text-lg font-black text-slate-950">Warranty Media</h2>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    @foreach ($warrantyMedia as $index => $item)
+                        @php
+                            $mediaUrl = route('admin.website-forms.media.show', [
+                                'formType' => $formType->routeKey(),
+                                'websiteFormSubmission' => $submission,
+                                'media' => $index,
+                            ]);
+                            $isVideo = str_starts_with((string) ($item['mime_type'] ?? ''), 'video/');
+                        @endphp
+                        <article class="space-y-3 rounded-lg border border-teal-100 p-3">
+                            @if ($isVideo)
+                                <video class="max-h-64 w-full rounded-md border border-teal-100" controls preload="metadata" src="{{ $mediaUrl }}"></video>
+                            @else
+                                <img alt="Warranty media {{ $index + 1 }}" class="max-h-64 w-full rounded-md border border-teal-100 object-cover" src="{{ $mediaUrl }}">
+                            @endif
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <p class="truncate text-xs font-semibold text-slate-500">{{ $item['original_name'] ?: 'Media '.($index + 1) }}</p>
+                                <a class="inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-3 py-1.5 text-xs font-bold text-teal-800 transition hover:bg-teal-50" href="{{ $mediaUrl }}" rel="noreferrer" target="_blank">
+                                    Open
+                                </a>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
         <section class="rounded-lg border border-teal-100 bg-white p-6 shadow-sm">
             <h2 class="text-lg font-black text-slate-950">Admin Notes</h2>
             <p class="mt-4 whitespace-pre-line text-sm leading-7 text-slate-700">{{ $submission->admin_notes ?: 'No admin notes yet.' }}</p>
