@@ -36,6 +36,18 @@ class Installer extends Model
         return $this->hasMany(InstallerInstallation::class);
     }
 
+    public function questionnaires(): HasMany
+    {
+        return $this->hasMany(InstallationQuestionnaire::class);
+    }
+
+    public function locationSummary(): string
+    {
+        return collect([$this->city, $this->state])
+            ->filter()
+            ->implode(', ');
+    }
+
     public function isArchived(): bool
     {
         return $this->status === InstallerStatus::Archived;

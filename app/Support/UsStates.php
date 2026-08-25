@@ -71,4 +71,34 @@ class UsStates
     {
         return array_keys(self::options());
     }
+
+    public static function abbreviation(?string $value): ?string
+    {
+        if (! filled($value)) {
+            return null;
+        }
+
+        $normalized = strtoupper(trim($value));
+
+        if (array_key_exists($normalized, self::options())) {
+            return $normalized;
+        }
+
+        $match = collect(self::options())
+            ->search(fn (string $label) => strcasecmp($label, trim($value)) === 0);
+
+        return $match === false ? null : $match;
+    }
+
+    public static function matches(?string $left, ?string $right): bool
+    {
+        $leftAbbreviation = self::abbreviation($left);
+        $rightAbbreviation = self::abbreviation($right);
+
+        if ($leftAbbreviation && $rightAbbreviation) {
+            return $leftAbbreviation === $rightAbbreviation;
+        }
+
+        return filled($left) && filled($right) && strcasecmp(trim($left), trim($right)) === 0;
+    }
 }

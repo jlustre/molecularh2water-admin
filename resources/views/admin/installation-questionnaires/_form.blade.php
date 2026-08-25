@@ -43,6 +43,22 @@
     </div>
 
     <div class="lg:col-span-2">
+        <label for="seller_id" class="block text-sm font-semibold text-slate-700">Seller</label>
+        <select id="seller_id" name="seller_id" class="mt-1 block w-full rounded-md border-teal-100 text-slate-900 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+            <option value="">Select a seller</option>
+            @foreach (($consultants ?? []) as $consultant)
+                <option @selected((string) old('seller_id', $questionnaire->seller_id) === (string) $consultant->id) value="{{ $consultant->id }}">
+                    {{ $consultant->name }}
+                </option>
+            @endforeach
+        </select>
+        <p class="mt-1 text-xs text-slate-500">The consultant or member who sold this installation.</p>
+        @error('seller_id')
+            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+        @enderror
+    </div>
+
+    <div class="lg:col-span-2">
         <label for="street_address" class="block text-sm font-semibold text-slate-700">Street Address</label>
         <input id="street_address" name="street_address" type="text" value="{{ old('street_address', $questionnaire->street_address) }}" required class="mt-1 block w-full rounded-md border-teal-100 text-slate-900 shadow-sm focus:border-teal-500 focus:ring-teal-500">
         @error('street_address')

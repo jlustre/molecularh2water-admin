@@ -154,6 +154,10 @@
                                     <span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $jobStatusClasses[$record->status->value] ?? $jobStatusClasses['scheduled'] }}">
                                         {{ $record->status->label() }}
                                     </span>
+                                    @include('admin.installation-questionnaires._response_badge', [
+                                        'response' => $record->assignment_response,
+                                        'size' => 'sm',
+                                    ])
                                     <p class="font-semibold text-slate-900">
                                         {{ $record->customer_name ?: 'Unnamed customer' }}
                                     </p>
@@ -177,6 +181,14 @@
                                 </div>
                                 @if ($record->notes)
                                     <p class="mt-2 text-sm text-slate-600">{{ $record->notes }}</p>
+                                @endif
+                                @if ($record->questionnaire && auth()->user()?->hasPermission('installation-questionnaires.view'))
+                                    <a
+                                        class="mt-2 inline-flex text-xs font-bold text-teal-700 hover:text-teal-800"
+                                        href="{{ route('admin.installation-questionnaires.show', $record->questionnaire) }}"
+                                    >
+                                        View installation questionnaire
+                                    </a>
                                 @endif
                             </div>
 

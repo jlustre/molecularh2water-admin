@@ -2,9 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\InstallerAssignmentRejectionReason;
+use App\Enums\InstallerAssignmentResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 class InstallationQuestionnaire extends Model
@@ -30,6 +35,15 @@ class InstallationQuestionnaire extends Model
         'water_source_other',
         'special_requirements',
         'additional_notes',
+        'installer_id',
+        'assigned_by_user_id',
+        'assigned_at',
+        'assignment_notes',
+        'assignment_response',
+        'assignment_responded_at',
+        'assignment_rejection_reason',
+        'assignment_rejection_notes',
+        'seller_id',
         'sink_photo_path',
         'sink_photo_original_name',
         'sink_photos',
@@ -40,7 +54,63 @@ class InstallationQuestionnaire extends Model
         return [
             'existing_equipment' => 'array',
             'sink_photos' => 'array',
+            'assigned_at' => 'datetime',
+            'assignment_response' => InstallerAssignmentResponse::class,
+            'assignment_responded_at' => 'datetime',
+            'assignment_rejection_reason' => InstallerAssignmentRejectionReason::class,
         ];
+    }
+
+    public function installer(): BelongsTo
+    {
+        return $this->belongsTo(Installer::class);
+    }
+
+    public function assignedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_by_user_id');
+    }
+
+    public function seller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'seller_id');
+    }
+
+    public function installerInstallations(): HasMany
+    {
+        return $this->hasMany(InstallerInstallation::class);
+    }
+
+    public function currentInstallerInstallation(): ?InstallerInstallation
+    {
+        $jobs = $this->relationLoaded('installerInstallations')
+            ? $this->installerInstallations
+            : $this->installerInstallations()->get();
+
+        return $jobs
+            ->sortByDesc('id')
+            ->first(function (InstallerInstallation $job) {
+                if (! $this->installer_id) {
+                    return false;
+                }
+
+                return $job->installer_id === $this->installer_id;
+            });
+    }
+
+    public function isAssigned(): bool
+    {
+        return $this->installer_id !== null;
+    }
+
+    public function scopeUnassigned(Builder $query): Builder
+    {
+        return $query->whereNull('installer_id');
+    }
+
+    public function scopeAssigned(Builder $query): Builder
+    {
+        return $query->whereNotNull('installer_id');
     }
 
     protected function fullName(): Attribute
@@ -113,5 +183,23 @@ class InstallationQuestionnaire extends Model
             'rent' => 'Yes I rent',
             default => 'Not provided',
         };
+    }
+
+    public function waterSourceLabel(): string
+    {
+        if ($this->water_source === 'Other') {
+            return filled($this->water_source_other)
+                ? 'Other: '.$this->water_source_other
+                : 'Other';
+        }
+
+        return $this->water_source ?: 'Not provided';
+    }
+
+    public function existingEquipmentLabel(): string
+    {
+        $items = collect($this->existing_equipment ?? [])->filter();
+
+        return $items->isEmpty() ? 'None' : $items->implode(', ');
     }
 }

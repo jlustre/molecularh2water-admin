@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\InstallationAssignmentResponseController;
 use App\Livewire\Portal\MemberHierarchy;
 use App\Livewire\Portal\RegistrationInvites;
 use App\Livewire\Portal\Dashboard as PortalDashboard;
@@ -37,6 +38,22 @@ Route::get('website-forms/media/{websiteFormSubmission}/{media}', [WebsiteFormSu
     ->whereNumber('websiteFormSubmission')
     ->whereNumber('media')
     ->name('website-forms.media.public');
+
+Route::prefix('installation-assignments/{installation}/installers/{installer}')
+    ->middleware('signed')
+    ->whereNumber('installation')
+    ->whereNumber('installer')
+    ->group(function () {
+        Route::get('accept', [InstallationAssignmentResponseController::class, 'accept'])
+            ->name('installation-assignments.accept');
+        Route::get('reject', [InstallationAssignmentResponseController::class, 'rejectForm'])
+            ->name('installation-assignments.reject');
+        Route::post('reject', [InstallationAssignmentResponseController::class, 'reject'])
+            ->name('installation-assignments.reject.store');
+        Route::get('photos/{photo}', [InstallationAssignmentResponseController::class, 'photo'])
+            ->whereNumber('photo')
+            ->name('installation-assignments.photos.show');
+    });
 
 Route::get('search', GlobalSearchController::class)
     ->middleware(['auth'])
@@ -221,6 +238,10 @@ Route::middleware(['auth', 'admin.access'])
                 ->name('installation-questionnaires.edit');
             Route::match(['put', 'patch'], '/installation-questionnaires/{installation_questionnaire}', [InstallationQuestionnaireController::class, 'update'])
                 ->name('installation-questionnaires.update');
+            Route::post('/installation-questionnaires/{installation_questionnaire}/assign-installer', [InstallationQuestionnaireController::class, 'assignInstaller'])
+                ->name('installation-questionnaires.assign-installer');
+            Route::post('/installation-questionnaires/{installation_questionnaire}/unassign-installer', [InstallationQuestionnaireController::class, 'unassignInstaller'])
+                ->name('installation-questionnaires.unassign-installer');
             Route::delete('/installation-questionnaires/{installation_questionnaire}', [InstallationQuestionnaireController::class, 'destroy'])
                 ->name('installation-questionnaires.destroy');
         });

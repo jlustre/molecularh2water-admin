@@ -16,8 +16,14 @@
                     <p class="mt-2 text-sm leading-6 text-slate-500">Submitted {{ $questionnaire->created_at?->format('M j, Y g:i A') }}.</p>
                 </div>
 
-                <div class="flex flex-wrap gap-3">
-                    <a href="{{ route('admin.installation-questionnaires.edit', $questionnaire) }}" class="inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-2.5 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">
+                <div class="flex flex-wrap items-center gap-3">
+                    @include('admin.installation-questionnaires._response_badge', ['response' => $questionnaire->assignment_response])
+                    @if (auth()->user()?->hasPermission('installation-questionnaires.manage') && ! $questionnaire->isAssigned())
+                        <a href="#assign-installer" class="inline-flex items-center justify-center rounded-md bg-teal-400 px-5 py-2.5 text-sm font-bold text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] transition hover:bg-teal-300">
+                            Assign Installer
+                        </a>
+                    @endif
+                    <a href="{{ route('admin.installation-questionnaires.edit', $questionnaire) }}" class="inline-flex items-center justify-center rounded-md {{ $questionnaire->isAssigned() ? 'bg-teal-400 text-[#031a19] shadow-[0_14px_28px_rgba(45,212,191,0.22)] hover:bg-teal-300' : 'border border-teal-200 bg-white text-teal-800 hover:bg-teal-50' }} px-5 py-2.5 text-sm font-bold transition">
                         Edit Submission
                     </a>
                     <a href="{{ route('admin.installation-questionnaires.index') }}" class="inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-5 py-2.5 text-sm font-bold text-teal-800 transition hover:bg-teal-50">
@@ -26,6 +32,8 @@
                 </div>
             </div>
         </section>
+
+        @include('admin.installation-questionnaires._assign_installer')
 
         <section class="grid gap-6 lg:grid-cols-2">
             <div class="rounded-lg border border-teal-100 bg-white p-6 shadow-sm">
@@ -44,6 +52,10 @@
                     <div>
                         <dt class="font-semibold text-slate-500">Phone</dt>
                         <dd class="mt-1 text-slate-900">{{ $questionnaire->phone }}</dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold text-slate-500">Seller</dt>
+                        <dd class="mt-1 font-semibold text-slate-900">{{ $questionnaire->seller?->name ?: 'Not set' }}</dd>
                     </div>
                     <div>
                         <dt class="font-semibold text-slate-500">Own or Rent</dt>

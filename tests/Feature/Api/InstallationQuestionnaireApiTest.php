@@ -87,3 +87,28 @@ it('requires water_source_other when water source is other', function () {
     ])->assertUnprocessable()
         ->assertJsonValidationErrors(['water_source_other']);
 });
+
+it('assigns the seller from a matching CRM customer', function () {
+    Mail::fake();
+
+    $seller = \App\Models\User::factory()->create(['name' => 'Casey Closer']);
+    \App\Models\Crm\Customer::factory()->assignedTo($seller)->create([
+        'email' => 'alex@example.com',
+    ]);
+
+    $this->postJson('/api/installation-questionnaires', [
+        'first_name' => 'Alex',
+        'last_name' => 'Buyer',
+        'email' => 'alex@example.com',
+        'phone' => '555-0100',
+        'street_address' => '123 Main St',
+        'city' => 'Austin',
+        'state' => 'TX',
+        'postal_code' => '78701',
+        'country' => 'United States',
+        'property_type' => 'Condo',
+        'water_source' => 'Municipal (connected to the city)',
+    ])->assertCreated();
+
+    expect(InstallationQuestionnaire::query()->first()?->seller_id)->toBe($seller->id);
+});

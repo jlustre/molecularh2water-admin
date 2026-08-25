@@ -75,6 +75,7 @@ class InstallerController extends Controller
     public function show(Request $request, Installer $installer): View
     {
         $historyQuery = InstallerInstallation::query()
+            ->with('questionnaire')
             ->where('installer_id', $installer->id)
             ->latest('scheduled_at');
 

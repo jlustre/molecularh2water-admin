@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\InstallationQuestionnaire;
+use App\Services\Admin\InstallationQuestionnaireSellerResolver;
 use App\Services\EmailMappingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class InstallationQuestionnaireController extends Controller
 
     public function __construct(
         private readonly EmailMappingService $emailMappings,
+        private readonly InstallationQuestionnaireSellerResolver $sellers,
     ) {}
 
     public function store(Request $request): JsonResponse
@@ -82,6 +84,7 @@ class InstallationQuestionnaireController extends Controller
         $questionnaire = InstallationQuestionnaire::create([
             ...collect($validated)->except(['sink_photo', 'sink_photos'])->all(),
             'existing_equipment' => $validated['existing_equipment'] ?? [],
+            'seller_id' => $this->sellers->resolveId($validated['email'] ?? null),
             'sink_photos' => $uploadedPhotos,
             'sink_photo_path' => $firstPhoto['path'] ?? null,
             'sink_photo_original_name' => $firstPhoto['original_name'] ?? null,

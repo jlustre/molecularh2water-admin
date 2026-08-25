@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\InstallerAssignmentRejectionReason;
+use App\Enums\InstallerAssignmentResponse;
 use App\Enums\InstallerInstallationStatus;
 use App\Models\Crm\Customer;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,6 +18,7 @@ class InstallerInstallation extends Model
         'installer_id',
         'crm_customer_id',
         'directory_customer_id',
+        'installation_questionnaire_id',
         'status',
         'customer_name',
         'customer_email',
@@ -29,16 +32,23 @@ class InstallerInstallation extends Model
         'cancelled_at',
         'rescheduled_at',
         'notes',
+        'assignment_response',
+        'assignment_responded_at',
+        'assignment_rejection_reason',
+        'assignment_rejection_notes',
     ];
 
     protected function casts(): array
     {
         return [
             'status' => InstallerInstallationStatus::class,
+            'assignment_response' => InstallerAssignmentResponse::class,
+            'assignment_rejection_reason' => InstallerAssignmentRejectionReason::class,
             'scheduled_at' => 'datetime',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'rescheduled_at' => 'datetime',
+            'assignment_responded_at' => 'datetime',
         ];
     }
 
@@ -55,6 +65,11 @@ class InstallerInstallation extends Model
     public function directoryCustomer(): BelongsTo
     {
         return $this->belongsTo(DirectoryCustomer::class);
+    }
+
+    public function questionnaire(): BelongsTo
+    {
+        return $this->belongsTo(InstallationQuestionnaire::class, 'installation_questionnaire_id');
     }
 
     public function locationSummary(): string

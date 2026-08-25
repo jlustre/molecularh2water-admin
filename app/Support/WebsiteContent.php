@@ -51,7 +51,7 @@ class WebsiteContent
             'site.consumers_guide_url' => [
                 'label' => 'Consumers Guide URL',
                 'type' => 'url',
-                'default' => 'https://simplebooklet.com/consumersguidetohydrogen#page=1',
+                'default' => 'https://heyzine.com/flip-book/c249c5d00b.html',
                 'help' => 'Consumers Guide booklet link shown in the website footer.',
             ],
         ];

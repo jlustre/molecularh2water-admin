@@ -41,7 +41,7 @@
                         <p class="text-xs font-bold uppercase tracking-[0.2em] text-teal-100">Installation Questionnaires</p>
                         <h1 class="mt-2 text-2xl font-black sm:text-3xl">Manage pre-installation submissions</h1>
                         <p class="mt-1 text-sm text-teal-50/75">
-                            Review customer questionnaires submitted before delivery and install.
+                            Review customer questionnaires, then assign an installer to create the installation job.
                         </p>
                     </div>
                     <a
@@ -59,9 +59,9 @@
         <div class="installation-stats">
             @foreach ([
                 ['label' => 'Total', 'value' => $totalSubmissions, 'meta' => 'All submissions'],
-                ['label' => 'This Month', 'value' => $thisMonthSubmissions, 'meta' => 'Current month'],
+                ['label' => 'Unassigned', 'value' => $unassignedCount, 'meta' => 'Needs an installer'],
+                ['label' => 'Assigned', 'value' => $assignedCount, 'meta' => 'On an installer job list'],
                 ['label' => 'Last 30 Days', 'value' => $newSubmissions, 'meta' => 'Recent activity'],
-                ['label' => 'With Photos', 'value' => $withPhotos, 'meta' => 'Sink photos uploaded'],
             ] as $card)
                 <div class="rounded-lg border border-teal-100 bg-white p-4 shadow-sm">
                     <p class="text-xs font-semibold text-slate-500">{{ $card['meta'] }}</p>
@@ -98,6 +98,20 @@
                             </option>
                         @endforeach
                     </select>
+                    <select class="rounded-full border border-teal-100 px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-teal-400 focus:ring-teal-400" name="assignment">
+                        <option value="">All assignments</option>
+                        <option @selected(request('assignment') === 'unassigned') value="unassigned">Unassigned</option>
+                        <option @selected(request('assignment') === 'assigned') value="assigned">Assigned</option>
+                    </select>
+                    <select class="rounded-full border border-teal-100 px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-teal-400 focus:ring-teal-400" name="seller_id">
+                        <option value="">All sellers</option>
+                        <option @selected(request('seller_id') === 'unassigned') value="unassigned">No seller</option>
+                        @foreach ($sellers as $seller)
+                            <option @selected((string) request('seller_id') === (string) $seller->id) value="{{ $seller->id }}">
+                                {{ $seller->name }}
+                            </option>
+                        @endforeach
+                    </select>
                     <select class="rounded-full border border-teal-100 px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-teal-400 focus:ring-teal-400" name="submitted">
                         <option value="">Any submitted date</option>
                         <option @selected(request('submitted') === '7_days') value="7_days">Last 7 days</option>
@@ -120,9 +134,11 @@
                     <thead class="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
                         <tr>
                             <th class="px-3 py-2.5">Customer</th>
+                            <th class="px-3 py-2.5">Seller</th>
                             <th class="px-3 py-2.5">Location</th>
                             <th class="px-3 py-2.5">Property</th>
-                            <th class="px-3 py-2.5">Water Source</th>
+                            <th class="px-3 py-2.5">Installer</th>
+                            <th class="px-3 py-2.5">Status</th>
                             <th class="px-3 py-2.5">Photo</th>
                             <th class="px-3 py-2.5">Submitted</th>
                             <th class="px-3 py-2.5 text-right">Actions</th>
@@ -136,11 +152,67 @@
                                     <p class="text-xs font-medium text-teal-700">{{ $questionnaire->email }}</p>
                                     <p class="text-xs text-slate-500">{{ $questionnaire->phone }}</p>
                                 </td>
+                                <td class="px-3 py-3">
+                                    @if ($questionnaire->seller)
+                                        <p class="font-semibold text-slate-900">{{ $questionnaire->seller->name }}</p>
+                                    @else
+                                        <span class="text-slate-400">—</span>
+                                    @endif
+                                </td>
                                 <td class="px-3 py-3 text-slate-600">
                                     {{ $questionnaire->city }}, {{ $questionnaire->state }} {{ $questionnaire->postal_code }}
                                 </td>
                                 <td class="px-3 py-3 text-slate-600">{{ $questionnaire->property_type }}</td>
-                                <td class="px-3 py-3 text-slate-600">{{ $questionnaire->water_source }}</td>
+                                <td class="px-3 py-3">
+                                    @if ($questionnaire->installer)
+                                        <p class="font-semibold text-slate-900">{{ $questionnaire->installer->name }}</p>
+                                        <p class="text-xs text-slate-500">
+                                            {{ collect([$questionnaire->installer->company, $questionnaire->installer->locationSummary()])->filter()->implode(' · ') ?: 'Assigned' }}
+                                        </p>
+                                    @else
+                                        <span class="text-slate-400">—</span>
+                                        @if (auth()->user()?->hasPermission('installation-questionnaires.manage') && $assignableInstallers->isNotEmpty())
+                                            <form
+                                                class="mt-2 flex min-w-[14rem] flex-col gap-1.5"
+                                                method="POST"
+                                                action="{{ route('admin.installation-questionnaires.assign-installer', $questionnaire) }}"
+                                            >
+                                                @csrf
+                                                <select
+                                                    class="rounded-md border-teal-100 text-xs text-slate-900 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                                                    name="installer_id"
+                                                    required
+                                                >
+                                                    <option value="">Choose installer</option>
+                                                    @foreach ($assignableInstallers as $installer)
+                                                        <option value="{{ $installer->id }}">
+                                                            {{ $installer->name }}@if($installer->locationSummary()) — {{ $installer->locationSummary() }}@endif
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <button class="inline-flex items-center justify-center rounded-md bg-teal-600 px-2.5 py-1.5 text-xs font-bold text-white transition hover:bg-teal-700" type="submit">
+                                                    Assign
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @endif
+                                </td>
+                                <td class="px-3 py-3">
+                                    @if ($questionnaire->assignment_response)
+                                        @include('admin.installation-questionnaires._response_badge', [
+                                            'response' => $questionnaire->assignment_response,
+                                            'size' => 'sm',
+                                        ])
+                                    @elseif ($questionnaire->isAssigned())
+                                        <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-emerald-700">
+                                            Assigned
+                                        </span>
+                                    @else
+                                        <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-amber-800">
+                                            Unassigned
+                                        </span>
+                                    @endif
+                                </td>
                                 <td class="px-3 py-3 text-slate-500">
                                     @php $photoCount = count($questionnaire->sinkPhotoItems()); @endphp
                                     {{ $photoCount > 0 ? $photoCount : 'No' }}
@@ -159,6 +231,19 @@
                                                 <circle cx="12" cy="12" r="3"/>
                                             </svg>
                                         </a>
+                                        @if (auth()->user()?->hasPermission('installation-questionnaires.manage'))
+                                            <a
+                                                aria-label="{{ $questionnaire->isAssigned() ? 'Update installer' : 'Assign installer' }}"
+                                                class="inline-flex size-9 items-center justify-center rounded-md border border-teal-100 text-teal-700 hover:bg-teal-50"
+                                                href="{{ route('admin.installation-questionnaires.show', $questionnaire) }}#assign-installer"
+                                                title="{{ $questionnaire->isAssigned() ? 'Update installer' : 'Assign installer' }}"
+                                            >
+                                                <svg class="size-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                                    <path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" stroke-linecap="round" stroke-linejoin="round"/>
+                                                    <path d="M4.5 20.25a7.5 7.5 0 0 1 15 0" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                            </a>
+                                        @endif
                                         <a
                                             aria-label="Edit"
                                             class="inline-flex size-9 items-center justify-center rounded-md border border-teal-100 text-teal-700 hover:bg-teal-50"
@@ -189,7 +274,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td class="px-3 py-10 text-center text-slate-500" colspan="7">
+                                <td class="px-3 py-10 text-center text-slate-500" colspan="8">
                                     <p class="font-bold text-slate-900">No installation questionnaires yet</p>
                                     <p class="mt-1 text-sm">Customer submissions from the public installation page will appear here.</p>
                                 </td>
