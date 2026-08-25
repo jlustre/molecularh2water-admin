@@ -28,6 +28,11 @@ class FrontendUrl
         return self::path((string) config('frontend.installation_path', '/installation'));
     }
 
+    public static function issueReport(): string
+    {
+        return self::path((string) config('frontend.issue_report_path', '/report-issue'));
+    }
+
     public static function websiteForm(WebsiteFormType $type): string
     {
         return self::path($type->frontendPath());

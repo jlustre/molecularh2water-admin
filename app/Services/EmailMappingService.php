@@ -7,6 +7,7 @@ use App\Mail\FormSubmissionAlert;
 use App\Mail\InstallationQuestionnaireSubmitted;
 use App\Models\EmailMapping;
 use App\Models\InstallationQuestionnaire;
+use App\Models\IssueReport;
 use App\Models\WarrantyRegistration;
 use App\Models\WebsiteFormSubmission;
 use Illuminate\Mail\Mailable;
@@ -153,6 +154,32 @@ class EmailMappingService
             NotifiableForm::InstallationQuestionnaire,
             new InstallationQuestionnaireSubmitted($questionnaire),
         );
+    }
+
+    public function notifyIssueReport(IssueReport $report): void
+    {
+        $form = NotifiableForm::IssueReport;
+
+        $this->send($form, new FormSubmissionAlert(
+            formLabel: $form->label(),
+            subjectLine: 'New issue report '.$report->reference_code,
+            details: array_filter([
+                'Reference' => $report->reference_code,
+                'Reporter' => $report->reporter_name,
+                'Email' => $report->reporter_email,
+                'Phone' => $report->reporter_phone,
+                'Site' => $report->site->label(),
+                'Category' => $report->category->label(),
+                'Severity' => $report->severity->label(),
+                'Title' => $report->title,
+                'Description' => $report->description,
+                'Page URL' => $report->page_url,
+                'Source' => $report->source->label(),
+                'Submitted' => $report->created_at?->timezone(config('app.timezone'))->format('F j, Y g:i A T'),
+            ], fn ($value) => filled($value)),
+            adminUrl: route('admin.issue-reports.show', $report),
+            replyToEmail: $report->reporter_email,
+        ));
     }
 
     private function adminUrlForWebsiteForm(WebsiteFormSubmission $submission): string

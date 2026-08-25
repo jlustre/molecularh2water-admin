@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\InstallationQuestionnaireController;
+use App\Http\Controllers\Api\IssueReportController;
 use App\Http\Controllers\Api\LeadCaptureController;
 use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\MediaResourceController;
@@ -40,6 +41,14 @@ Route::post('/warranty-registrations', [WarrantyRegistrationController::class, '
 Route::post('/installation-questionnaires', [InstallationQuestionnaireController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('api.installation-questionnaires.store');
+
+Route::post('/issue-reports', [IssueReportController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('api.issue-reports.store');
+
+Route::get('/issue-reports/lookup', [IssueReportController::class, 'lookup'])
+    ->middleware('throttle:30,1')
+    ->name('api.issue-reports.lookup');
 
 Route::post('/prospects', [ProspectController::class, 'store'])
     ->middleware('throttle:10,1')

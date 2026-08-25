@@ -89,6 +89,32 @@ it('notifies mapped recipients for warranty registrations', function () {
     });
 });
 
+it('notifies mapped recipients for issue reports', function () {
+    Mail::fake();
+
+    EmailMapping::factory()->create([
+        'form_key' => NotifiableForm::IssueReport,
+        'email' => 'issue-desk@example.com',
+        'is_active' => true,
+    ]);
+
+    $this->postJson('/api/issue-reports', [
+        'reporter_name' => 'Jordan Visitor',
+        'reporter_email' => 'jordan@example.com',
+        'site' => 'frontend',
+        'category' => 'bug',
+        'severity' => 'high',
+        'title' => 'Broken checkout button',
+        'description' => 'The warranty form submit button does not respond.',
+    ])->assertCreated();
+
+    Mail::assertSent(FormSubmissionAlert::class, function (FormSubmissionAlert $mail) {
+        return $mail->hasTo('issue-desk@example.com')
+            && $mail->formLabel === 'Issue Reports'
+            && str_contains($mail->subjectLine, 'issue report');
+    });
+});
+
 it('notifies mapped recipients for website form captures', function () {
     Mail::fake();
     $this->seed(CrmSeeder::class);

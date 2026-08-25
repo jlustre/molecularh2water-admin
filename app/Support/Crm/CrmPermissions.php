@@ -88,6 +88,13 @@ class CrmPermissions
                     'installation-questionnaires.manage' => 'Manage installation questionnaires',
                 ],
             ],
+            'issue_reports' => [
+                'label' => 'Issue Reports',
+                'items' => [
+                    'issue-reports.view' => 'View issue reports',
+                    'issue-reports.manage' => 'Create, update, and delete issue reports',
+                ],
+            ],
             'installers' => [
                 'label' => 'Installer Management',
                 'items' => [
@@ -292,11 +299,18 @@ class CrmPermissions
 
         return [
             'super-admin' => $all,
-            'admin' => array_values(array_diff($all, ['users.delete', 'settings.manage'])),
+            'admin' => array_values(array_diff($all, [
+                'users.delete',
+                'settings.manage',
+                'issue-reports.view',
+                'issue-reports.manage',
+            ])),
             'team-admin' => array_values(array_diff($all, [
                 'users.delete',
                 'settings.manage',
                 'crm.records.view-all',
+                'issue-reports.view',
+                'issue-reports.manage',
             ])),
             'manager' => [
                 'portal.dashboard.view',

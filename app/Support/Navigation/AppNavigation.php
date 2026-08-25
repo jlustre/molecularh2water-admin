@@ -7,6 +7,7 @@ use App\Enums\WebsiteFormType;
 use App\Models\BlogPost;
 use App\Models\Crm\Lead;
 use App\Models\Faq;
+use App\Models\IssueReport;
 use App\Models\User;
 use App\Models\WebsiteFormSubmission;
 use App\Support\Crm\CrmRoutes;
@@ -71,6 +72,9 @@ class AppNavigation
         $formBadges = $user->hasPermission('website-forms.view')
             ? self::websiteFormNewBadges()
             : [];
+        $openIssueCount = $user->hasPermission('issue-reports.view') && Schema::hasTable('issue_reports')
+            ? IssueReport::query()->open()->count()
+            : null;
 
         $definitions = [
             [
@@ -92,6 +96,14 @@ class AppNavigation
                 'key' => 'profile',
                 'label' => 'My Profile',
                 'route' => 'profile',
+                'permission' => null,
+                'section' => 'workspace',
+            ],
+            [
+                'key' => 'report-issue',
+                'label' => 'Report An Issue',
+                'route' => 'issue-reports.create',
+                'route_pattern' => 'issue-reports.*',
                 'permission' => null,
                 'section' => 'workspace',
             ],
@@ -325,6 +337,17 @@ class AppNavigation
                 'permission' => 'installation-questionnaires.view',
                 'requires_admin' => true,
                 'section' => 'engagement',
+            ],
+            [
+                'key' => 'issue-reports',
+                'label' => 'Issue Reports',
+                'route' => 'admin.issue-reports.index',
+                'route_pattern' => 'admin.issue-reports.*',
+                'permission' => 'issue-reports.view',
+                'requires_admin' => true,
+                'section' => 'engagement',
+                'badge' => $openIssueCount ?: null,
+                'badge_tone' => 'warn',
             ],
             [
                 'key' => 'installers',

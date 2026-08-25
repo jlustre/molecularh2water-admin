@@ -10,6 +10,7 @@ enum NotifiableForm: string
     case WellnessAdvocateZoom = 'wellness_advocate_zoom';
     case WarrantyRegistration = 'warranty_registration';
     case InstallationQuestionnaire = 'installation_questionnaire';
+    case IssueReport = 'issue_report';
 
     public function label(): string
     {
@@ -20,6 +21,7 @@ enum NotifiableForm: string
             self::WellnessAdvocateZoom => 'Wellness Advocate Zooms',
             self::WarrantyRegistration => 'Warranty Registrations',
             self::InstallationQuestionnaire => 'Installation Questionnaires',
+            self::IssueReport => 'Issue Reports',
         };
     }
 
@@ -32,6 +34,7 @@ enum NotifiableForm: string
             self::WellnessAdvocateZoom => 'Wellness Advocate Zoom requests.',
             self::WarrantyRegistration => 'Public warranty registration submissions.',
             self::InstallationQuestionnaire => 'Pre-installation questionnaire submissions.',
+            self::IssueReport => 'Website and admin issue / error reports from any user.',
         };
     }
 
@@ -44,6 +47,7 @@ enum NotifiableForm: string
             self::WellnessAdvocateZoom => 'admin.website-forms.index',
             self::WarrantyRegistration => 'admin.warranty-registrations.index',
             self::InstallationQuestionnaire => 'admin.installation-questionnaires.index',
+            self::IssueReport => 'admin.issue-reports.index',
         };
     }
 

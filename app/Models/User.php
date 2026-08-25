@@ -118,6 +118,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'permissions.manage' => in_array('roles.manage', $permissions, true),
             'warranty.view' => in_array('warranty.manage', $permissions, true),
             'installation-questionnaires.view' => in_array('installation-questionnaires.manage', $permissions, true),
+            'issue-reports.view' => in_array('issue-reports.manage', $permissions, true),
             'installers.view' => in_array('installers.manage', $permissions, true),
             'customer-directory.view' => in_array('customer-directory.manage', $permissions, true),
             'website-forms.view' => in_array('website-forms.manage', $permissions, true)

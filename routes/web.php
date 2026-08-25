@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\EmailMappingController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\InstallationQuestionnaireController;
+use App\Http\Controllers\Admin\IssueReportController;
 use App\Http\Controllers\Admin\DirectoryCustomerController;
 use App\Http\Controllers\Admin\InstallerController;
 use App\Http\Controllers\Admin\MediaController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\Admin\WarrantyRegistrationController;
 use App\Http\Controllers\Admin\WebsiteFormSubmissionController;
 use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\GlobalSearchController;
+use App\Http\Controllers\IssueReportController as PortalIssueReportController;
 use App\Http\Controllers\NotificationReadController;
 use App\Http\Controllers\ResourcesController;
 
@@ -91,6 +93,13 @@ Route::get('media/{mediaItem}', [ResourcesController::class, 'show'])
 Route::view('profile', 'profile', ['header' => 'Profile', 'title' => 'Profile'])
     ->middleware(['auth'])
     ->name('profile');
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('report-issue', [PortalIssueReportController::class, 'create'])
+        ->name('issue-reports.create');
+    Route::post('report-issue', [PortalIssueReportController::class, 'store'])
+        ->name('issue-reports.store');
+});
 
 Route::get('notifications/{notification}', NotificationReadController::class)
     ->middleware(['auth'])
@@ -244,6 +253,33 @@ Route::middleware(['auth', 'admin.access'])
                 ->name('installation-questionnaires.unassign-installer');
             Route::delete('/installation-questionnaires/{installation_questionnaire}', [InstallationQuestionnaireController::class, 'destroy'])
                 ->name('installation-questionnaires.destroy');
+        });
+
+        Route::middleware('permission:issue-reports.view')->group(function () {
+            Route::get('/issue-reports', [IssueReportController::class, 'index'])
+                ->name('issue-reports.index');
+        });
+        Route::middleware('permission:issue-reports.manage')->group(function () {
+            Route::get('/issue-reports/create', [IssueReportController::class, 'create'])
+                ->name('issue-reports.create');
+            Route::post('/issue-reports', [IssueReportController::class, 'store'])
+                ->name('issue-reports.store');
+        });
+        Route::middleware('permission:issue-reports.view')->group(function () {
+            Route::get('/issue-reports/{issue_report}', [IssueReportController::class, 'show'])
+                ->whereNumber('issue_report')
+                ->name('issue-reports.show');
+        });
+        Route::middleware('permission:issue-reports.manage')->group(function () {
+            Route::get('/issue-reports/{issue_report}/edit', [IssueReportController::class, 'edit'])
+                ->whereNumber('issue_report')
+                ->name('issue-reports.edit');
+            Route::match(['put', 'patch'], '/issue-reports/{issue_report}', [IssueReportController::class, 'update'])
+                ->whereNumber('issue_report')
+                ->name('issue-reports.update');
+            Route::delete('/issue-reports/{issue_report}', [IssueReportController::class, 'destroy'])
+                ->whereNumber('issue_report')
+                ->name('issue-reports.destroy');
         });
 
         Route::middleware('permission:customer-directory.view')->group(function () {

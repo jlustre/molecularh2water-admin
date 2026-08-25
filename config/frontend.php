@@ -39,4 +39,6 @@ return [
 
     'installation_path' => '/installation',
 
+    'issue_report_path' => '/report-issue',
+
 ];

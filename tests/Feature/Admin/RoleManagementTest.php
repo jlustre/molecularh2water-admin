@@ -126,11 +126,13 @@ it('seeds the default access roles', function () {
             'permissions.manage',
             'warranty.view',
             'installation-questionnaires.view',
+            'issue-reports.view',
+            'issue-reports.manage',
         );
 
     expect(Role::where('slug', 'admin')->first()->permissions)
         ->toContain('roles.manage', 'permissions.manage', 'warranty.manage', 'installation-questionnaires.manage')
-        ->not->toContain('users.delete', 'settings.manage');
+        ->not->toContain('users.delete', 'settings.manage', 'issue-reports.view', 'issue-reports.manage');
 
     expect(Role::where('slug', 'member')->first()->permissions)
         ->toContain('portal.dashboard.view', 'media.view', 'leads.view')
@@ -145,6 +147,7 @@ it('lists every permission group on the role form', function () {
         ->assertOk()
         ->assertSee('Warranty Registrations')
         ->assertSee('Installation Questionnaires')
+        ->assertSee('Issue Reports')
         ->assertSee('Installer Management')
         ->assertSee('Customers Management')
         ->assertSee('Email Mappings')
@@ -161,6 +164,8 @@ it('lists every permission group on the role form', function () {
         ->assertSee('permissions.manage')
         ->assertSee('website-forms.manage')
         ->assertSee('installation-questionnaires.manage')
+        ->assertSee('issue-reports.view')
+        ->assertSee('issue-reports.manage')
         ->assertSee('installers.view')
         ->assertSee('installers.manage')
         ->assertSee('customer-directory.view')
