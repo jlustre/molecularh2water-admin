@@ -43,6 +43,7 @@ class InstallationQuestionnaireController extends Controller
                     'Apartment',
                 ]),
             ],
+            'seller_name' => ['nullable', 'string', 'max:255'],
             'existing_equipment' => ['nullable', 'array'],
             'existing_equipment.*' => [
                 'string',

@@ -43,7 +43,16 @@
     </div>
 
     <div class="lg:col-span-2">
-        <label for="seller_id" class="block text-sm font-semibold text-slate-700">Seller</label>
+        <label for="seller_name" class="block text-sm font-semibold text-slate-700">Seller</label>
+        <input id="seller_name" name="seller_name" type="text" value="{{ old('seller_name', $questionnaire->seller_name) }}" placeholder="From whom you purchase this machine" class="mt-1 block w-full rounded-md border-teal-100 text-slate-900 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+        <p class="mt-1 text-xs text-slate-500">The person or company the customer purchased the machine from.</p>
+        @error('seller_name')
+            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+        @enderror
+    </div>
+
+    <div class="lg:col-span-2">
+        <label for="seller_id" class="block text-sm font-semibold text-slate-700">Assigned Seller</label>
         <select id="seller_id" name="seller_id" class="mt-1 block w-full rounded-md border-teal-100 text-slate-900 shadow-sm focus:border-teal-500 focus:ring-teal-500">
             <option value="">Select a seller</option>
             @foreach (($consultants ?? []) as $consultant)

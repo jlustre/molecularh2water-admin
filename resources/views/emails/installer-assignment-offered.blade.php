@@ -35,17 +35,14 @@
                             <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#99f6e4;">Installation assignment</p>
                             <h1 style="margin:0;font-size:22px;line-height:1.25;font-weight:700;">Hi {{ $installer->name }}, a job is ready for you</h1>
                             <p style="margin:10px 0 0;font-size:14px;line-height:1.5;color:#d1fae5;">
-                                Review the details, then accept or decline below.
+                                Open the secure installation information assigned to you.
                             </p>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding:18px 20px 8px;text-align:center;">
-                            <a href="{{ $acceptUrl }}" style="display:inline-block;margin:0 6px 10px;background-color:#14b8a6;color:#041f1e;text-decoration:none;font-weight:700;font-size:14px;padding:11px 18px;border-radius:999px;">
-                                Accept assignment
-                            </a>
-                            <a href="{{ $rejectUrl }}" style="display:inline-block;margin:0 6px 10px;background-color:#ffffff;color:#b45309;text-decoration:none;font-weight:700;font-size:14px;padding:11px 18px;border-radius:999px;border:1px solid #f6ad55;">
-                                Decline with reason
+                            <a href="{{ $packetUrl }}" style="display:inline-block;margin:0 6px 10px;background-color:#073b4c;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 18px;border-radius:999px;">
+                                Open installation information
                             </a>
                         </td>
                     </tr>
@@ -85,7 +82,7 @@
                     </tr>
                     <tr>
                         <td style="padding:16px 20px;background-color:#f8fffe;border-top:1px solid #d7f3ef;font-size:11px;line-height:1.5;color:#64748b;">
-                            These accept/decline links expire in 14 days. If the buttons do not work, reply to this email.
+                            This secure installation information link expires in 14 days. If it does not work, reply to this email.
                         </td>
                     </tr>
                 </table>

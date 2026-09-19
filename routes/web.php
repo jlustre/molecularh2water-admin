@@ -52,6 +52,12 @@ Route::prefix('installation-assignments/{installation}/installers/{installer}')
             ->name('installation-assignments.reject');
         Route::post('reject', [InstallationAssignmentResponseController::class, 'reject'])
             ->name('installation-assignments.reject.store');
+        Route::get('packet', [InstallationAssignmentResponseController::class, 'packet'])
+            ->name('installation-assignments.packet');
+        Route::get('complete', [InstallationAssignmentResponseController::class, 'completionForm'])
+            ->name('installation-assignments.complete');
+        Route::post('complete', [InstallationAssignmentResponseController::class, 'complete'])
+            ->name('installation-assignments.complete.store');
         Route::get('photos/{photo}', [InstallationAssignmentResponseController::class, 'photo'])
             ->whereNumber('photo')
             ->name('installation-assignments.photos.show');
@@ -238,6 +244,10 @@ Route::middleware(['auth', 'admin.access'])
                 ->name('installation-questionnaires.index');
             Route::get('/installation-questionnaires/{installation_questionnaire}', [InstallationQuestionnaireController::class, 'show'])
                 ->name('installation-questionnaires.show');
+            Route::get('/installation-questionnaires/{installation_questionnaire}/completion', [InstallationQuestionnaireController::class, 'completion'])
+                ->name('installation-questionnaires.completion');
+            Route::get('/installation-questionnaires/{installation_questionnaire}/completion/signature', [InstallationQuestionnaireController::class, 'completionSignature'])
+                ->name('installation-questionnaires.completion.signature');
             Route::get('/installation-questionnaires/{installation_questionnaire}/photos/{photo}', [InstallationQuestionnaireController::class, 'photo'])
                 ->whereNumber('photo')
                 ->name('installation-questionnaires.photos.show');

@@ -29,6 +29,7 @@ class InstallationQuestionnaire extends Model
         'postal_code',
         'country',
         'property_type',
+        'seller_name',
         'existing_equipment',
         'ownership',
         'water_source',

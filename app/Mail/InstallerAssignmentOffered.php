@@ -26,6 +26,7 @@ class InstallerAssignmentOffered extends Mailable
         public Installer $installer,
         public string $acceptUrl,
         public string $rejectUrl,
+        public string $packetUrl,
         public array $photoPreviews = [],
     ) {}
 
@@ -67,6 +68,7 @@ class InstallerAssignmentOffered extends Mailable
             $installer,
             URL::temporarySignedRoute('installation-assignments.accept', $expires, $params),
             URL::temporarySignedRoute('installation-assignments.reject', $expires, $params),
+            URL::temporarySignedRoute('installation-assignments.packet', $expires, $params),
             $photos,
         );
     }

@@ -3,8 +3,11 @@
 use App\Enums\InstallerAssignmentRejectionReason;
 use App\Enums\InstallerAssignmentResponse;
 use App\Enums\InstallerInstallationStatus;
+use App\Enums\NotifiableForm;
+use App\Mail\FormSubmissionAlert;
 use App\Mail\InstallerAssignmentOffered;
 use App\Mail\InstallerAssignmentResponded;
+use App\Models\EmailMapping;
 use App\Models\InstallationQuestionnaire;
 use App\Models\Installer;
 use App\Models\InstallerInstallation;
@@ -88,8 +91,9 @@ it('emails the installer a compact assignment with accept and decline links', fu
         return $mail->hasTo($installer->email)
             && $mail->questionnaire->is($questionnaire)
             && $mail->installation->is($job)
-            && str_contains($html, 'Accept assignment')
-            && str_contains($html, 'Decline with reason')
+            && str_contains($html, 'Open installation information')
+            && ! str_contains($html, 'Accept assignment')
+            && ! str_contains($html, 'Decline with reason')
             && str_contains($html, 'Sam Owner')
             && str_contains($html, 'Casey Seller')
             && str_contains($html, '88 Lake Rd')
@@ -97,9 +101,94 @@ it('emails the installer a compact assignment with accept and decline links', fu
             && str_contains($html, 'Narrow hallway')
             && str_contains($html, 'Gate code 1234')
             && str_contains($html, 'sink.jpg')
-            && str_contains($html, 'installation-assignments/'.$job->id.'/installers/'.$installer->id.'/accept')
-            && str_contains($html, 'installation-assignments/'.$job->id.'/installers/'.$installer->id.'/reject');
+            && str_contains($html, 'installation-assignments/'.$job->id.'/installers/'.$installer->id.'/packet');
     });
+
+    $packetUrl = URL::temporarySignedRoute('installation-assignments.packet', now()->addDay(), [
+        'installation' => $job,
+        'installer' => $installer,
+    ]);
+
+    $this->get($packetUrl)
+        ->assertOk()
+        ->assertSee('Complete installation packet')
+        ->assertSee('Sam Owner')
+        ->assertSee('Casey Seller')
+        ->assertSee('Narrow hallway')
+        ->assertSee('Dog in yard')
+        ->assertSee('sink.jpg')
+        ->assertDontSee('Dashboard')
+        ->assertDontSee('/admin/')
+        ->assertSee(route('installation-assignments.photos.show', [
+            'installation' => $job,
+            'installer' => $installer,
+            'photo' => 0,
+        ]), false);
+
+    $completionUrl = URL::temporarySignedRoute('installation-assignments.complete', now()->addDay(), [
+        'installation' => $job,
+        'installer' => $installer,
+    ]);
+
+    $this->get($completionUrl)
+        ->assertOk()
+        ->assertSee('read the waiver below')
+        ->assertSee('Customer signature');
+
+    EmailMapping::factory()->create([
+        'form_key' => NotifiableForm::InstallationQuestionnaire,
+        'email' => 'admin@example.com',
+        'is_active' => true,
+    ]);
+
+    $signatureData = 'data:image/png;base64,'.base64_encode(str_repeat('signature', 20));
+    $this->post(URL::temporarySignedRoute('installation-assignments.complete.store', now()->addDay(), [
+        'installation' => $job,
+        'installer' => $installer,
+    ]), [
+        'completion_installer_name' => 'Jordan Nearby',
+        'installation_date' => now()->toDateString(),
+        'completion_address' => "88 Lake Rd\nSeattle, WA 98101",
+        'installed_product' => 'H2 Water System 5000',
+        'completion_details' => 'System installed, tested, and explained to customer.',
+        'installer_completion_notes' => 'Customer requested a follow-up filter check.',
+        'customer_name' => 'Sam Owner',
+        'waiver_agreed' => '1',
+        'signature_data' => $signatureData,
+    ])->assertOk()->assertSee('Installation completed');
+
+    Mail::assertSent(FormSubmissionAlert::class, function (FormSubmissionAlert $mail) use ($job, $questionnaire) {
+        $html = $mail->render();
+
+        return $mail->hasTo('admin@example.com')
+            && str_contains($mail->envelope()->subject, 'Installation completed')
+            && str_contains($html, 'H2 Water System 5000')
+            && str_contains($html, 'Customer requested a follow-up filter check.')
+            && str_contains($html, route('admin.installation-questionnaires.completion', $questionnaire));
+    });
+
+    $job->refresh();
+    expect($job->status)->toBe(InstallerInstallationStatus::Completed)
+        ->and($job->completion_installer_name)->toBe('Jordan Nearby')
+        ->and($job->installed_product)->toBe('H2 Water System 5000')
+        ->and($job->installer_completion_notes)->toBe('Customer requested a follow-up filter check.')
+        ->and($job->customer_signature_name)->toBe('Sam Owner')
+        ->and($job->customer_signed_at)->not->toBeNull()
+        ->and($job->customer_signature_path)->not->toBeNull();
+    Storage::disk('public')->assertExists($job->customer_signature_path);
+
+    test()->actingAs($admin)
+        ->get(route('admin.installation-questionnaires.completion', $questionnaire))
+        ->assertOk()
+        ->assertSee('H2 Water System 5000')
+        ->assertSee('Customer requested a follow-up filter check.')
+        ->assertSee(route('admin.installation-questionnaires.completion.signature', $questionnaire), false);
+
+    $otherInstaller = Installer::factory()->create();
+    $this->get(URL::temporarySignedRoute('installation-assignments.packet', now()->addDay(), [
+        'installation' => $job,
+        'installer' => $otherInstaller,
+    ]))->assertForbidden();
 
     test()->actingAs($admin)
         ->get(route('admin.installation-questionnaires.show', $questionnaire))

@@ -27,6 +27,7 @@
                                         'Name' => e($questionnaire->full_name),
                                         'Email' => e($questionnaire->email),
                                         'Phone' => e($questionnaire->phone),
+                                        'Seller' => e($questionnaire->seller_name ?: 'Not provided'),
                                         'Installation Address' => nl2br(e($questionnaire->formatted_address)),
                                         'Property Type' => e($questionnaire->property_type),
                                         'Existing Equipment' => e(

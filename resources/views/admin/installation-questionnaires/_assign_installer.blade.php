@@ -105,6 +105,13 @@
                     @if ($currentJob->notes)
                         <p class="mt-2 text-sm text-slate-600">{{ $currentJob->notes }}</p>
                     @endif
+                    @if ($currentJob->customer_signed_at)
+                        <div class="mt-4 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                            <p class="font-bold">Customer completion signed</p>
+                            <p class="mt-1">{{ $currentJob->customer_signature_name }} · {{ $currentJob->customer_signed_at->format('M j, Y g:i A') }}</p>
+                            <a class="mt-2 inline-flex font-bold text-emerald-800 hover:text-emerald-950" href="{{ route('admin.installation-questionnaires.completion', $questionnaire) }}">View completion form</a>
+                        </div>
+                    @endif
                 @else
                     <p class="mt-2 text-sm text-slate-500">No open job is linked yet. Re-save the assignment to add one.</p>
                 @endif

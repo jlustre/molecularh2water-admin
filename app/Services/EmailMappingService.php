@@ -7,6 +7,7 @@ use App\Mail\FormSubmissionAlert;
 use App\Mail\InstallationQuestionnaireSubmitted;
 use App\Models\EmailMapping;
 use App\Models\InstallationQuestionnaire;
+use App\Models\InstallerInstallation;
 use App\Models\IssueReport;
 use App\Models\WarrantyRegistration;
 use App\Models\WebsiteFormSubmission;
@@ -153,6 +154,43 @@ class EmailMappingService
         $this->send(
             NotifiableForm::InstallationQuestionnaire,
             new InstallationQuestionnaireSubmitted($questionnaire),
+        );
+    }
+
+    public function notifyInstallationCompletion(InstallerInstallation $installation): void
+    {
+        $installation->loadMissing(['installer', 'questionnaire.seller']);
+        $questionnaire = $installation->questionnaire;
+
+        if (! $questionnaire) {
+            return;
+        }
+
+        $this->send(
+            NotifiableForm::InstallationQuestionnaire,
+            new FormSubmissionAlert(
+                formLabel: 'Installation Completion',
+                subjectLine: 'Installation completed: '.$questionnaire->full_name,
+                details: [
+                    'Installer' => $installation->completion_installer_name ?: $installation->installer?->name,
+                    'Installation date' => $installation->installation_date?->format('F j, Y'),
+                    'Customer' => $questionnaire->full_name,
+                    'Customer email' => $questionnaire->email,
+                    'Customer phone' => $questionnaire->phone,
+                    'Address' => $installation->completion_address ?: $questionnaire->formatted_address,
+                    'Product installed' => $installation->installed_product,
+                    'Completion details' => $installation->completion_details,
+                    'Installer notes' => $installation->installer_completion_notes,
+                    'Customer signed' => $installation->customer_signature_name.' on '.$installation->customer_signed_at?->format('F j, Y g:i A'),
+                ],
+                adminUrl: route('admin.installation-questionnaires.completion', $questionnaire),
+                replyToEmail: $questionnaire->email,
+                fileAttachments: $installation->customer_signature_path ? [[
+                    'disk' => 'public',
+                    'path' => $installation->customer_signature_path,
+                    'as' => 'customer-signature.png',
+                ]] : [],
+            ),
         );
     }
 

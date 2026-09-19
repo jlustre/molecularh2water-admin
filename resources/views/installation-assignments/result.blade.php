@@ -31,6 +31,9 @@
                 @if ($questionnaire)
                     <p class="meta"><strong>Customer:</strong> {{ $questionnaire->full_name }}</p>
                     <p class="meta"><strong>Address:</strong> {{ str_replace("\n", ', ', $questionnaire->formatted_address) }}</p>
+                    @if ($packetUrl)
+                        <p><a href="{{ $packetUrl }}">Open complete installation packet</a></p>
+                    @endif
                 @endif
             </div>
         </div>

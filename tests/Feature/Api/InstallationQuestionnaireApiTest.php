@@ -30,6 +30,7 @@ it('stores an installation questionnaire and emails mapped recipients', function
         'postal_code' => '78701',
         'country' => 'United States',
         'property_type' => 'Single Family Home',
+        'seller_name' => 'H2Systems direct sales',
         'existing_equipment' => [
             'Water Softener',
         ],
@@ -54,6 +55,7 @@ it('stores an installation questionnaire and emails mapped recipients', function
     expect($questionnaire)->not->toBeNull()
         ->and($questionnaire->first_name)->toBe('Alex')
         ->and($questionnaire->last_name)->toBe('Buyer')
+        ->and($questionnaire->seller_name)->toBe('H2Systems direct sales')
         ->and($questionnaire->existing_equipment)->toBe(['Water Softener'])
         ->and($questionnaire->sink_photo_path)->not->toBeNull()
         ->and($questionnaire->sinkPhotoItems())->toHaveCount(2);

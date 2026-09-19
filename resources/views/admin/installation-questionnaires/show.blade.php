@@ -55,6 +55,10 @@
                     </div>
                     <div>
                         <dt class="font-semibold text-slate-500">Seller</dt>
+                        <dd class="mt-1 font-semibold text-slate-900">{{ $questionnaire->seller_name ?: 'Not provided' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold text-slate-500">Assigned Seller</dt>
                         <dd class="mt-1 font-semibold text-slate-900">{{ $questionnaire->seller?->name ?: 'Not set' }}</dd>
                     </div>
                     <div>

@@ -124,6 +124,29 @@ class InstallationQuestionnaireController extends Controller
         ]);
     }
 
+    public function completion(InstallationQuestionnaire $installationQuestionnaire): View
+    {
+        $installation = $installationQuestionnaire->currentInstallerInstallation();
+        abort_unless($installation?->customer_signed_at, 404);
+
+        return view('admin.installation-questionnaires.completion', [
+            'installation' => $installation->load(['installer', 'questionnaire.seller']),
+            'questionnaire' => $installationQuestionnaire,
+        ]);
+    }
+
+    public function completionSignature(InstallationQuestionnaire $installationQuestionnaire): BinaryFileResponse
+    {
+        $installation = $installationQuestionnaire->currentInstallerInstallation();
+        abort_unless($installation?->customer_signature_path, 404);
+        abort_unless(Storage::disk('public')->exists($installation->customer_signature_path), 404);
+
+        return response()->file(Storage::disk('public')->path($installation->customer_signature_path), [
+            'Content-Type' => Storage::disk('public')->mimeType($installation->customer_signature_path) ?: 'image/png',
+            'Content-Disposition' => 'inline; filename="customer-signature.png"',
+        ]);
+    }
+
     public function edit(InstallationQuestionnaire $installationQuestionnaire): View
     {
         return view('admin.installation-questionnaires.edit', [
@@ -312,6 +335,7 @@ class InstallationQuestionnaireController extends Controller
                     'Apartment',
                 ]),
             ],
+            'seller_name' => ['nullable', 'string', 'max:255'],
             'existing_equipment' => ['nullable', 'array'],
             'existing_equipment.*' => [
                 'string',

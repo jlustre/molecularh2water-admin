@@ -25,6 +25,7 @@ it('allows an admin to manage installation questionnaires', function () {
         'existing_equipment' => ['Water Softener'],
         'ownership' => 'rent',
         'water_source' => 'Well',
+        'seller_name' => 'Original seller name',
         'special_requirements' => 'Narrow hallway',
     ]);
 
@@ -40,6 +41,7 @@ it('allows an admin to manage installation questionnaires', function () {
         ->get(route('admin.installation-questionnaires.show', $questionnaire))
         ->assertOk()
         ->assertSee('Sam Owner')
+        ->assertSee('Original seller name')
         ->assertSee('88 Lake Rd');
 
     $this->actingAs($admin)
@@ -62,13 +64,15 @@ it('allows an admin to manage installation questionnaires', function () {
             'existing_equipment' => ['Water Softener'],
             'ownership' => 'own',
             'water_source' => 'Well',
+            'seller_name' => 'Updated seller name',
             'special_requirements' => 'Narrow hallway',
             'additional_notes' => 'Updated note',
         ])
         ->assertRedirect(route('admin.installation-questionnaires.show', $questionnaire));
 
     expect($questionnaire->fresh()->first_name)->toBe('Samantha')
-        ->and($questionnaire->fresh()->property_type)->toBe('Condo');
+        ->and($questionnaire->fresh()->property_type)->toBe('Condo')
+        ->and($questionnaire->fresh()->seller_name)->toBe('Updated seller name');
 
     $this->actingAs($admin)
         ->delete(route('admin.installation-questionnaires.destroy', $questionnaire))
